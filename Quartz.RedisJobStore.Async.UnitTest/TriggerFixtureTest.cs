@@ -336,7 +336,7 @@
                               new HashEntry(TriggerStoreKeyEnum.MisfireInstruction, "0"),
                               new HashEntry(TriggerStoreKeyEnum.CalendarName, string.Empty),
                               new HashEntry(TriggerStoreKeyEnum.TriggerType, "CRON"),
-                              new HashEntry(TriggerStoreKeyEnum.TimeZoneId, "Taipei Standard Time"),
+                              new HashEntry(TriggerStoreKeyEnum.TimeZoneId, TimeZoneInfo.Utc.Id),
                               new HashEntry(TriggerStoreKeyEnum.CronExpression, "0 0 */3 ? * * *"),
                           });
             var result = await storage.RetrieveTriggerAsync(trigger);

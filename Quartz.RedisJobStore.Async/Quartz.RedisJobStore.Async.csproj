@@ -2,10 +2,15 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <Authors>Bruno Jan</Authors>
     <Product />
     <Company>Study4.TW</Company>
+    <PackageProjectUrl>https://github.com/Yi-Shiuan/quartz.redis-job-store.async</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Yi-Shiuan/quartz.redis-job-store.async</RepositoryUrl>
+    <RepositoryType>https://github.com/Yi-Shiuan/quartz.redis-job-store.async</RepositoryType>
+    <PackageTags>quartz.net,redis,jobstore</PackageTags>
+    <Version>1.0.1</Version>
   </PropertyGroup>
 
   <ItemGroup>
