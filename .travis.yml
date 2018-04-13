@@ -9,3 +9,5 @@ script:
  - dotnet test
  - dotnet build -c Release
  - dotnet pack -c Release /p:PackageVersion=1.0.${TRAVIS_BUILD_NUMBER}
+ - cd Quartz.RedisJobStore.Async/bin/Release
+ - dir
