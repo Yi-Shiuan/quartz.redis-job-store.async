@@ -5,9 +5,11 @@ configuration: Release
 os: Visual Studio 2017
 
 build_script:
-- dotnet restore
-- cd Quartz.RedisJobStore.Async.UnitTest
-- dotnet test
-- dotnet build -c Release
-- cd ..\Quartz.RedisJobStore.Async
-- dotnet pack -c Release
+  - dotnet restore
+  - cd Quartz.RedisJobStore.Async.UnitTest
+  - dotnet test
+  - dotnet build -c Release
+  - cd ..\Quartz.RedisJobStore.Async
+  - dotnet pack -c Release
+  - cd bin\release
+  - dotnet nuget push *.nupkg -k oy2n4l76qzq4dumjeyaqx5kuuheejo7evmrxcnenr6i3lq -s https://api.nuget.org/v3/index.json
