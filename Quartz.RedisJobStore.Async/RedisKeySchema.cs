@@ -19,7 +19,7 @@
         public RedisKeySchema(string delimiter, string prefix)
         {
             this.delimiter = delimiter;
-            this.prefix = $"{prefix}_";
+            this.prefix = $"{prefix}:";
         }
 
         public RedisKey LockKey => $"{prefix}Lock";
