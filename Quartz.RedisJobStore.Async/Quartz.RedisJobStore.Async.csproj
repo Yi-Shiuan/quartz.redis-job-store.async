@@ -11,7 +11,7 @@
     <RepositoryType>https://github.com/Yi-Shiuan/quartz.redis-job-store.async</RepositoryType>
     <PackageTags>quartz.net,redis,jobstore</PackageTags>
     <Version Condition=" '$(APPVEYOR_BUILD_NUMBER)' == '' ">0.0.1-local</Version>
-    <Version Condition=" '$(APPVEYOR_BUILD_NUMBER)' != '' ">1.0.$(APPVEYOR_BUILD_NUMBER)</Version>    
+    <Version Condition=" '$(APPVEYOR_BUILD_NUMBER)' != '' ">1.0.0-preview-$(APPVEYOR_BUILD_NUMBER)</Version>    
   </PropertyGroup>
 
   <ItemGroup>
