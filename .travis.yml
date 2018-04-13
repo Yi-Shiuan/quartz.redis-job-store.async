@@ -3,4 +3,5 @@ mono: none
 dotnet: 2.1.104
 script:
  - dotnet restore
- - dotnet build
+ - dotnet build -c Release
+ - dotnet test
