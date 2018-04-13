@@ -8,4 +8,4 @@ script:
  - cd Quartz.RedisJobStore.Async.UnitTest
  - dotnet test
  - dotnet build -c Release
- - dotnet pack -c Release /p:PackageVersion=1.0.$TRAVIS_BUILD_NUMBER
+ - dotnet pack -c Release /p:PackageVersion=1.0.${TRAVIS_BUILD_NUMBER}
