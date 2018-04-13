@@ -1,6 +1,6 @@
 # quartz.redis-job-store.async
 
-[![Build status](https://ci.appveyor.com/api/projects/status/qoxed1e6f797da5o?svg=true)](https://ci.appveyor.com/project/Yi-Shiuan/quartz-redis-job-store-async)
+[![Build status](https://ci.appveyor.com/api/projects/status/qoxed1e6f797da5o?svg=true)](https://ci.appveyor.com/project/Yi-Shiuan/quartz-redis-job-store-async)[![NuGet](https://img.shields.io/nuget/v/quartz.redis-job-store.async.svg)](https://www.nuget.org/packages/Quartz.RedisJobStore.Async)
 
 This for Quartz.Net version 3
 
