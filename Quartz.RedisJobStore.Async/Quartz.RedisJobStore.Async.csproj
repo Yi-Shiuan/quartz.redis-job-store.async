@@ -10,7 +10,8 @@
     <RepositoryUrl>https://github.com/Yi-Shiuan/quartz.redis-job-store.async</RepositoryUrl>
     <RepositoryType>https://github.com/Yi-Shiuan/quartz.redis-job-store.async</RepositoryType>
     <PackageTags>quartz.net,redis,jobstore</PackageTags>
-    <Version>1.0.1</Version>
+    <Version Condition=" '$(APPVEYOR_BUILD_NUMBER)' == '' ">0.0.1-local</Version>
+    <Version Condition=" '$(APPVEYOR_BUILD_NUMBER)' != '' ">1.0.$(APPVEYOR_BUILD_NUMBER)</Version>    
   </PropertyGroup>
 
   <ItemGroup>
