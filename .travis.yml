@@ -8,12 +8,4 @@ script:
  - cd Quartz.RedisJobStore.Async.UnitTest
  - dotnet test
  - dotnet build -c Release
- - dotnet pack -c Release /p:PackageVersion=1.0.${TRAVIS_BUILD_NUMBER}
-
-deploy:
-  provider: releases
-  api_key: "wVIFnjaYAHlkH7mgfejnhw"
-  file: "FILE TO UPLOAD"
-  skip_cleanup: true
-  on:
-    tags: true
+ - dotnet pack -c Release /p:PackageVersion=1.0.$env:TRAVIS_BUILD_NUMBER
