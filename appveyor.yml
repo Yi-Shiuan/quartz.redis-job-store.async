@@ -1,4 +1,4 @@
-version: 1.0.{build}
+version: 1.0.0-preview-{build}
 
 configuration: Release
 
@@ -12,4 +12,4 @@ build_script:
   - cd ..\Quartz.RedisJobStore.Async
   - dotnet pack -c Release
   - cd bin\release
-  - dotnet nuget push *.nupkg -k oy2n4l76qzq4dumjeyaqx5kuuheejo7evmrxcnenr6i3lq -s https://api.nuget.org/v3/index.json
+  - dotnet nuget push *.nupkg -k oy2jtl7gic26gxudkgnai7yp5xbldxoehafvw7fomzisnm -s https://api.nuget.org/v3/index.json
