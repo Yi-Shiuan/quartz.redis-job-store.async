@@ -13,4 +13,4 @@ build_script:
 - dotnet test
 - dotnet build -c Release
 - cd ..\Quartz.RedisJobStore.Async
-- dotnet pack -c Release /p:PackageVersion= {VERSION}
+- dotnet pack -c Release
