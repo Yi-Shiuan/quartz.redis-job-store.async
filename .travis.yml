@@ -3,12 +3,9 @@ solution: Quartz.RedisJobStore.Async.sln
 mono: none
 dotnet: 2.1.104
 
-install:
-  - nuget restore Quartz.RedisJobStore.Async.sln
-  - nuget install NUnit.Runners -Version 2.6.4 -OutputDirectory testrunner
-
 script:
  - dotnet restore
  - cd Quartz.RedisJobStore.Async.UnitTest
  - dotnet test
  - dotnet build -c Release
+ - dotnet pack -c Release /p:PackageVersion=1.0.$TRAVIS_BUILD_NUMBER
