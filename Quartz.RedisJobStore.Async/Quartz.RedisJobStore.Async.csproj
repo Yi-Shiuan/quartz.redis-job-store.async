@@ -2,6 +2,10 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <Authors>Bruno Jan</Authors>
+    <Product />
+    <Company>Study4.TW</Company>
   </PropertyGroup>
 
   <ItemGroup>

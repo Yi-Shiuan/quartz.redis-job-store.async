@@ -84,13 +84,13 @@
             redis.SortedSetScoreAsync(schema.TriggerStateKey(TriggerStateEnum.Paused), schema.TriggerHashKey(trigger)).Returns(paused);
             redis.SortedSetScoreAsync(schema.TriggerStateKey(TriggerStateEnum.PausedBlocked), schema.TriggerHashKey(trigger)).Returns(pauseBlocked);
             redis.HashGetAsync(schema.TriggerHashKey(trigger), TriggerStoreKeyEnum.NextFireTime).Returns(999999);
-            redis.SetContainsAsync(schema.BlockedJobsSet(), "UnitTest:UT:job1").Returns(isBlockedJob);
+            redis.SetContainsAsync(schema.BlockedJobsSet(), schema.JobHashKey(new JobKey("Job", "UT"))).Returns(isBlockedJob);
 
             redis.HashGetAllAsync(schema.TriggerHashKey(trigger))
                  .Returns(
                       new[]
                           {
-                              new HashEntry(TriggerStoreKeyEnum.JobHash, "UnitTest:UT:job1"),
+                              new HashEntry(TriggerStoreKeyEnum.JobHash, schema.JobHashKey(new JobKey("Job", "UT"))),
                               new HashEntry(TriggerStoreKeyEnum.Description, string.Empty),
                               new HashEntry(TriggerStoreKeyEnum.NextFireTime, "1522749600000"),
                               new HashEntry(TriggerStoreKeyEnum.PrevFireTime, string.Empty),
