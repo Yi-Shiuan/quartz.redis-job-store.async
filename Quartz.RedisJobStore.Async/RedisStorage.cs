@@ -93,7 +93,7 @@
                 var score = ToUnixTimeMilliseconds(noLaterThan.Add(timeWindow));
 
                 var waitingStateTriggers = redis.SortedSetRangeByScoreWithScoresAsync(
-                                               schema.TriggerStateKey(TriggerStateEnum.Waiting),
+                                               schema.TriggerStateKey(TriggerState.Waiting),
                                                0,
                                                score,
                                                Exclude.None,
@@ -131,7 +131,7 @@
                     }
 
                     await LockTriggerAsync((await trigger).Key);
-                    await SetTriggerStateAsync(TriggerStateEnum.Acquired, sortedSetEntry.Score, sortedSetEntry.Element);
+                    await SetTriggerStateAsync(TriggerState.Acquired, sortedSetEntry.Score, sortedSetEntry.Element);
                     triggers.Add(await trigger);
                 }
             }
@@ -214,38 +214,38 @@
             return await Task.WhenAll((await triggerKeys).Select(s => RetrieveTriggerAsync(schema.TriggerKey(s))));
         }
 
-        public async Task<TriggerState> GetTriggerStateAsync(TriggerKey triggerKey)
+        public async Task<Quartz.TriggerState> GetTriggerStateAsync(TriggerKey triggerKey)
         {
             var key = schema.TriggerHashKey(triggerKey);
 
-            if (await redis.SortedSetScoreAsync(schema.TriggerStateKey(TriggerStateEnum.Paused), key) != null
-                || await redis.SortedSetScoreAsync(schema.TriggerStateKey(TriggerStateEnum.PausedBlocked), key) != null)
+            if (await redis.SortedSetScoreAsync(schema.TriggerStateKey(TriggerState.Paused), key) != null
+                || await redis.SortedSetScoreAsync(schema.TriggerStateKey(TriggerState.PausedBlocked), key) != null)
             {
-                return TriggerState.Paused;
+                return Quartz.TriggerState.Paused;
             }
 
-            if (await redis.SortedSetScoreAsync(schema.TriggerStateKey(TriggerStateEnum.Blocked), key) != null)
+            if (await redis.SortedSetScoreAsync(schema.TriggerStateKey(TriggerState.Blocked), key) != null)
             {
-                return TriggerState.Blocked;
+                return Quartz.TriggerState.Blocked;
             }
 
-            if (await redis.SortedSetScoreAsync(schema.TriggerStateKey(TriggerStateEnum.Waiting), key) != null
-                || await redis.SortedSetScoreAsync(schema.TriggerStateKey(TriggerStateEnum.Acquired), key) != null)
+            if (await redis.SortedSetScoreAsync(schema.TriggerStateKey(TriggerState.Waiting), key) != null
+                || await redis.SortedSetScoreAsync(schema.TriggerStateKey(TriggerState.Acquired), key) != null)
             {
-                return TriggerState.Normal;
+                return Quartz.TriggerState.Normal;
             }
 
-            if (await redis.SortedSetScoreAsync(schema.TriggerStateKey(TriggerStateEnum.Completed), key) != null)
+            if (await redis.SortedSetScoreAsync(schema.TriggerStateKey(TriggerState.Completed), key) != null)
             {
-                return TriggerState.Complete;
+                return Quartz.TriggerState.Complete;
             }
 
-            if (await redis.SortedSetScoreAsync(schema.TriggerStateKey(TriggerStateEnum.Error), key) != null)
+            if (await redis.SortedSetScoreAsync(schema.TriggerStateKey(TriggerState.Error), key) != null)
             {
-                return TriggerState.Error;
+                return Quartz.TriggerState.Error;
             }
 
-            return TriggerState.None;
+            return Quartz.TriggerState.None;
         }
 
         public Task<bool> IsJobGroupPausedAsync(string name)
@@ -379,9 +379,9 @@
         {
             var triggerHashKey = schema.TriggerHashKey(triggerKey);
             var isTriggerExist = redis.KeyExistsAsync(triggerHashKey);
-            var isCompleted = redis.SortedSetScoreAsync(schema.TriggerStateKey(TriggerStateEnum.Completed), triggerHashKey);
-            var nextFireTimeResult = redis.HashGetAsync(triggerHashKey, TriggerStoreKeyEnum.NextFireTime);
-            var blockedScoreResult = redis.SortedSetScoreAsync(schema.TriggerStateKey(TriggerStateEnum.Blocked), triggerHashKey);
+            var isCompleted = redis.SortedSetScoreAsync(schema.TriggerStateKey(TriggerState.Completed), triggerHashKey);
+            var nextFireTimeResult = redis.HashGetAsync(triggerHashKey, TriggerStoreKey.NextFireTime);
+            var blockedScoreResult = redis.SortedSetScoreAsync(schema.TriggerStateKey(TriggerState.Blocked), triggerHashKey);
 
             if (!await isTriggerExist)
             {
@@ -397,11 +397,11 @@
 
             if ((await blockedScoreResult).HasValue)
             {
-                await SetTriggerStateAsync(TriggerStateEnum.PausedBlocked, nextFireTime, triggerHashKey);
+                await SetTriggerStateAsync(TriggerState.PausedBlocked, nextFireTime, triggerHashKey);
                 return;
             }
 
-            await SetTriggerStateAsync(TriggerStateEnum.Paused, nextFireTime, triggerHashKey);
+            await SetTriggerStateAsync(TriggerState.Paused, nextFireTime, triggerHashKey);
         }
 
         public async Task<IReadOnlyCollection<string>> PauseTriggersAsync(GroupMatcher<TriggerKey> matcher)
@@ -437,7 +437,7 @@
         {
             var triggerHashKey = schema.TriggerHashKey(trigger.Key);
 
-            var score = redis.SortedSetScoreAsync(schema.TriggerStateKey(TriggerStateEnum.Acquired), triggerHashKey);
+            var score = redis.SortedSetScoreAsync(schema.TriggerStateKey(TriggerState.Acquired), triggerHashKey);
 
             if (!(await score).HasValue)
             {
@@ -447,7 +447,7 @@
             if (trigger.GetNextFireTimeUtc().HasValue)
             {
                 await SetTriggerStateAsync(
-                    TriggerStateEnum.Waiting,
+                    TriggerState.Waiting,
                     trigger.GetNextFireTimeUtc().GetValueOrDefault().DateTime.ToUnixTimeMillieSeconds(),
                     triggerHashKey);
                 return;
@@ -632,8 +632,8 @@
         {
             var triggerHashKey = schema.TriggerHashKey(triggerKey);
 
-            var isPausedTrigger = redis.SortedSetScoreAsync(schema.TriggerStateKey(TriggerStateEnum.Paused), triggerHashKey);
-            var isPausedBlockedTrigger = redis.SortedSetScoreAsync(schema.TriggerStateKey(TriggerStateEnum.PausedBlocked), triggerHashKey);
+            var isPausedTrigger = redis.SortedSetScoreAsync(schema.TriggerStateKey(TriggerState.Paused), triggerHashKey);
+            var isPausedBlockedTrigger = redis.SortedSetScoreAsync(schema.TriggerStateKey(TriggerState.PausedBlocked), triggerHashKey);
 
             if (!(await isPausedTrigger).HasValue && !(await isPausedBlockedTrigger).HasValue)
             {
@@ -650,11 +650,11 @@
             {
                 if (await redis.SetContainsAsync(schema.BlockedJobsSet(), jobHashKey))
                 {
-                    await SetTriggerStateAsync(TriggerStateEnum.Blocked, nextFireTime.Value.DateTime.ToUnixTimeMillieSeconds(), triggerHashKey);
+                    await SetTriggerStateAsync(TriggerState.Blocked, nextFireTime.Value.DateTime.ToUnixTimeMillieSeconds(), triggerHashKey);
                 }
                 else
                 {
-                    await SetTriggerStateAsync(TriggerStateEnum.Waiting, nextFireTime.Value.DateTime.ToUnixTimeMillieSeconds(), triggerHashKey);
+                    await SetTriggerStateAsync(TriggerState.Waiting, nextFireTime.Value.DateTime.ToUnixTimeMillieSeconds(), triggerHashKey);
                 }
             }
 
@@ -733,11 +733,11 @@
 
             var properties = detail.ToStringDictionary();
 
-            var builder = JobBuilder.Create(Type.GetType(properties[JobStoreKeyEnum.JobClass]))
+            var builder = JobBuilder.Create(Type.GetType(properties[JobStoreKey.JobClass]))
                                     .WithIdentity(jobKey)
-                                    .WithDescription(properties[JobStoreKeyEnum.Description])
-                                    .RequestRecovery(Convert.ToBoolean(Convert.ToInt16(properties[JobStoreKeyEnum.RequestRecovery])))
-                                    .StoreDurably(Convert.ToBoolean(Convert.ToInt16(properties[JobStoreKeyEnum.IsDurable])));
+                                    .WithDescription(properties[JobStoreKey.Description])
+                                    .RequestRecovery(Convert.ToBoolean(Convert.ToInt16(properties[JobStoreKey.RequestRecovery])))
+                                    .StoreDurably(Convert.ToBoolean(Convert.ToInt16(properties[JobStoreKey.IsDurable])));
 
             if (data != null && data.Length > 0)
             {
@@ -880,19 +880,19 @@
 
                     foreach (var nonConcurrentTriggerHashKey in await redis.SetMembersAsync(jobTriggersSetKey))
                     {
-                        var score = await redis.SortedSetScoreAsync(schema.TriggerStateKey(TriggerStateEnum.Blocked), nonConcurrentTriggerHashKey);
+                        var score = await redis.SortedSetScoreAsync(schema.TriggerStateKey(TriggerState.Blocked), nonConcurrentTriggerHashKey);
                         if (score.HasValue)
                         {
-                            await SetTriggerStateAsync(TriggerStateEnum.Paused, score.Value, nonConcurrentTriggerHashKey);
+                            await SetTriggerStateAsync(TriggerState.Paused, score.Value, nonConcurrentTriggerHashKey);
                         }
                         else
                         {
-                            score = redis.SortedSetScoreAsync(schema.TriggerStateKey(TriggerStateEnum.PausedBlocked), nonConcurrentTriggerHashKey)
+                            score = redis.SortedSetScoreAsync(schema.TriggerStateKey(TriggerState.PausedBlocked), nonConcurrentTriggerHashKey)
                                          .Result;
 
                             if (score.HasValue)
                             {
-                                await SetTriggerStateAsync(TriggerStateEnum.Paused, score.Value, nonConcurrentTriggerHashKey);
+                                await SetTriggerStateAsync(TriggerState.Paused, score.Value, nonConcurrentTriggerHashKey);
                             }
                         }
                     }
@@ -911,7 +911,7 @@
                 {
                     if (trigger.GetNextFireTimeUtc().HasValue == false)
                     {
-                        if (string.IsNullOrEmpty(await redis.HashGetAsync(triggerHashKey, TriggerStoreKeyEnum.NextFireTime)))
+                        if (string.IsNullOrEmpty(await redis.HashGetAsync(triggerHashKey, TriggerStoreKey.NextFireTime)))
                         {
                             await RemoveTriggerAsync(trigger.Key);
                         }
@@ -924,13 +924,13 @@
                 }
                 else if (triggerInstCode == SchedulerInstruction.SetTriggerComplete)
                 {
-                    await SetTriggerStateAsync(TriggerStateEnum.Completed, DateTimeOffset.UtcNow.DateTime.ToUnixTimeMillieSeconds(), triggerHashKey);
+                    await SetTriggerStateAsync(TriggerState.Completed, DateTimeOffset.UtcNow.DateTime.ToUnixTimeMillieSeconds(), triggerHashKey);
                     schedulerSignaler.SignalSchedulingChange(null);
                 }
                 else if (triggerInstCode == SchedulerInstruction.SetTriggerError)
                 {
                     var score = trigger.GetNextFireTimeUtc().HasValue ? trigger.GetNextFireTimeUtc().GetValueOrDefault().DateTime.ToUnixTimeMillieSeconds() : 0;
-                    await SetTriggerStateAsync(TriggerStateEnum.Error, score, triggerHashKey);
+                    await SetTriggerStateAsync(TriggerState.Error, score, triggerHashKey);
                     schedulerSignaler.SignalSchedulingChange(null);
                 }
                 else if (triggerInstCode == SchedulerInstruction.SetAllJobTriggersError)
@@ -939,9 +939,9 @@
 
                     foreach (var errorTriggerHashKey in await redis.SetMembersAsync(jobTriggersSetKey))
                     {
-                        var nextFireTime = redis.HashGetAsync(errorTriggerHashKey.ToString(), TriggerStoreKeyEnum.NextFireTime);
+                        var nextFireTime = redis.HashGetAsync(errorTriggerHashKey.ToString(), TriggerStoreKey.NextFireTime);
                         var score = string.IsNullOrEmpty(await nextFireTime) ? 0 : double.Parse(await nextFireTime);
-                        await SetTriggerStateAsync(TriggerStateEnum.Error, score, errorTriggerHashKey);
+                        await SetTriggerStateAsync(TriggerState.Error, score, errorTriggerHashKey);
                     }
 
                     schedulerSignaler.SignalSchedulingChange(null);
@@ -952,7 +952,7 @@
                     var triggers = redis.SetMembersAsync(jobTriggerSetKey);
                     await Task.WhenAll(
                         (await triggers).Select(
-                            s => SetTriggerStateAsync(TriggerStateEnum.Completed, DateTimeOffset.UtcNow.DateTime.ToUnixTimeMillieSeconds(), s)));
+                            s => SetTriggerStateAsync(TriggerState.Completed, DateTimeOffset.UtcNow.DateTime.ToUnixTimeMillieSeconds(), s)));
 
                     schedulerSignaler.SignalSchedulingChange(null);
                 }
@@ -997,7 +997,7 @@
                 var triggerHashKey = schema.TriggerHashKey(trigger.Key);
 
                 var triggerExistResult = redis.KeyExistsAsync(triggerHashKey);
-                var triggerAcquiredResult = redis.SortedSetScoreAsync(schema.TriggerStateKey(TriggerStateEnum.Acquired), triggerHashKey);
+                var triggerAcquiredResult = redis.SortedSetScoreAsync(schema.TriggerStateKey(TriggerState.Acquired), triggerHashKey);
 
                 if (!await triggerExistResult)
                 {
@@ -1048,18 +1048,18 @@
                     var tasks = new List<Task>(jobSet.Length);
                     foreach (var nonConcurrentTriggerHashKey in jobSet)
                     {
-                        var score = redis.SortedSetScore(schema.TriggerStateKey(TriggerStateEnum.Waiting), nonConcurrentTriggerHashKey);
+                        var score = redis.SortedSetScore(schema.TriggerStateKey(TriggerState.Waiting), nonConcurrentTriggerHashKey);
 
                         if (score.HasValue)
                         {
-                            tasks.Add(SetTriggerStateAsync(TriggerStateEnum.Blocked, score.Value, nonConcurrentTriggerHashKey));
+                            tasks.Add(SetTriggerStateAsync(TriggerState.Blocked, score.Value, nonConcurrentTriggerHashKey));
                         }
                         else
                         {
-                            score = await redis.SortedSetScoreAsync(schema.TriggerStateKey(TriggerStateEnum.Paused), nonConcurrentTriggerHashKey);
+                            score = await redis.SortedSetScoreAsync(schema.TriggerStateKey(TriggerState.Paused), nonConcurrentTriggerHashKey);
                             if (score.HasValue)
                             {
-                                tasks.Add(SetTriggerStateAsync(TriggerStateEnum.PausedBlocked, score.Value, nonConcurrentTriggerHashKey));
+                                tasks.Add(SetTriggerStateAsync(TriggerState.PausedBlocked, score.Value, nonConcurrentTriggerHashKey));
                             }
                         }
                     }
@@ -1074,12 +1074,12 @@
                 if (nextFireTimeUtc != null)
                 {
                     var nextFireTime = nextFireTimeUtc.Value;
-                    redis.HashSet(triggerHashKey, TriggerStoreKeyEnum.NextFireTime, nextFireTime.DateTime.ToUnixTimeMillieSeconds(), flags: CommandFlags.FireAndForget);
-                    await SetTriggerStateAsync(TriggerStateEnum.Waiting, nextFireTime.DateTime.ToUnixTimeMillieSeconds(), triggerHashKey);
+                    redis.HashSet(triggerHashKey, TriggerStoreKey.NextFireTime, nextFireTime.DateTime.ToUnixTimeMillieSeconds(), flags: CommandFlags.FireAndForget);
+                    await SetTriggerStateAsync(TriggerState.Waiting, nextFireTime.DateTime.ToUnixTimeMillieSeconds(), triggerHashKey);
                 }
                 else
                 {
-                    redis.HashSet(triggerHashKey, TriggerStoreKeyEnum.NextFireTime, string.Empty, flags: CommandFlags.FireAndForget);
+                    redis.HashSet(triggerHashKey, TriggerStoreKey.NextFireTime, string.Empty, flags: CommandFlags.FireAndForget);
                     await UnsetTriggerStateAsync(triggerHashKey);
                 }
 
@@ -1096,7 +1096,7 @@
 
         public async Task<bool> UnsetTriggerStateAsync(string triggerHashKey)
         {
-            foreach (TriggerStateEnum state in Enum.GetValues(typeof(TriggerStateEnum)))
+            foreach (TriggerState state in Enum.GetValues(typeof(TriggerState)))
             {
                 var hasKey = redis.SortedSetRemoveAsync(schema.TriggerStateKey(state), triggerHashKey);
                 if (await hasKey)
@@ -1143,7 +1143,7 @@
 
             if (!nextFireTime.HasValue)
             {
-                await SetTriggerStateAsync(TriggerStateEnum.Completed, score, schema.TriggerHashKey(trigger.Key));
+                await SetTriggerStateAsync(TriggerState.Completed, score, schema.TriggerHashKey(trigger.Key));
                 await schedulerSignaler.NotifySchedulerListenersFinalized(trigger);
             }
 
@@ -1181,12 +1181,12 @@
         {
             return new[]
                        {
-                           new HashEntry(JobStoreKeyEnum.JobClass, jobDetail.JobType.AssemblyQualifiedName),
-                           new HashEntry(JobStoreKeyEnum.Description, jobDetail.Description ?? string.Empty),
-                           new HashEntry(JobStoreKeyEnum.IsDurable, jobDetail.Durable),
-                           new HashEntry(JobStoreKeyEnum.RequestRecovery, jobDetail.RequestsRecovery),
-                           new HashEntry(JobStoreKeyEnum.BlockedBy, string.Empty),
-                           new HashEntry(JobStoreKeyEnum.BlockTime, string.Empty)
+                           new HashEntry(JobStoreKey.JobClass, jobDetail.JobType.AssemblyQualifiedName),
+                           new HashEntry(JobStoreKey.Description, jobDetail.Description ?? string.Empty),
+                           new HashEntry(JobStoreKey.IsDurable, jobDetail.Durable),
+                           new HashEntry(JobStoreKey.RequestRecovery, jobDetail.RequestsRecovery),
+                           new HashEntry(JobStoreKey.BlockedBy, string.Empty),
+                           new HashEntry(JobStoreKey.BlockTime, string.Empty)
                        };
         }
 
@@ -1201,50 +1201,50 @@
             var entries = new List<HashEntry>
                               {
                                   new HashEntry(
-                                      TriggerStoreKeyEnum.JobHash,
+                                      TriggerStoreKey.JobHash,
                                       operable.JobKey == null ? string.Empty : schema.JobHashKey(operable.JobKey)),
-                                  new HashEntry(TriggerStoreKeyEnum.Description, operable.Description ?? string.Empty),
+                                  new HashEntry(TriggerStoreKey.Description, operable.Description ?? string.Empty),
                                   new HashEntry(
-                                      TriggerStoreKeyEnum.NextFireTime,
+                                      TriggerStoreKey.NextFireTime,
                                       operable.GetNextFireTimeUtc().HasValue
                                           ? operable.GetNextFireTimeUtc().GetValueOrDefault().DateTime.ToUnixTimeMillieSeconds().ToString(CultureInfo.InvariantCulture)
                                           : string.Empty),
                                   new HashEntry(
-                                      TriggerStoreKeyEnum.PrevFireTime,
+                                      TriggerStoreKey.PrevFireTime,
                                       operable.GetPreviousFireTimeUtc().HasValue
                                           ? operable.GetPreviousFireTimeUtc().GetValueOrDefault().DateTime.ToUnixTimeMillieSeconds().ToString(CultureInfo.InvariantCulture)
                                           : string.Empty),
-                                  new HashEntry(TriggerStoreKeyEnum.Priority, operable.Priority),
+                                  new HashEntry(TriggerStoreKey.Priority, operable.Priority),
                                   new HashEntry(
-                                      TriggerStoreKeyEnum.StartTime,
+                                      TriggerStoreKey.StartTime,
                                       operable.StartTimeUtc.DateTime.ToUnixTimeMillieSeconds()),
                                   new HashEntry(
-                                      TriggerStoreKeyEnum.EndTime,
+                                      TriggerStoreKey.EndTime,
                                       operable.EndTimeUtc.HasValue
                                           ? operable.EndTimeUtc.Value.DateTime.ToUnixTimeMillieSeconds().ToString(CultureInfo.InvariantCulture)
                                           : string.Empty),
                                   new HashEntry(
-                                      TriggerStoreKeyEnum.FinalFireTime,
+                                      TriggerStoreKey.FinalFireTime,
                                       operable.FinalFireTimeUtc.HasValue
                                           ? operable.FinalFireTimeUtc.Value.DateTime.ToUnixTimeMillieSeconds().ToString(CultureInfo.InvariantCulture)
                                           : string.Empty),
-                                  new HashEntry(TriggerStoreKeyEnum.FireInstanceId, operable.FireInstanceId ?? string.Empty),
-                                  new HashEntry(TriggerStoreKeyEnum.MisfireInstruction, operable.MisfireInstruction),
-                                  new HashEntry(TriggerStoreKeyEnum.CalendarName, operable.CalendarName ?? string.Empty)
+                                  new HashEntry(TriggerStoreKey.FireInstanceId, operable.FireInstanceId ?? string.Empty),
+                                  new HashEntry(TriggerStoreKey.MisfireInstruction, operable.MisfireInstruction),
+                                  new HashEntry(TriggerStoreKey.CalendarName, operable.CalendarName ?? string.Empty)
                               };
 
             switch (operable)
             {
                 case ISimpleTrigger _:
-                    entries.Add(new HashEntry(TriggerStoreKeyEnum.TriggerType, TriggerStoreKeyEnum.TriggerTypeSimple));
-                    entries.Add(new HashEntry(TriggerStoreKeyEnum.RepeatCount, ((ISimpleTrigger)operable).RepeatCount));
-                    entries.Add(new HashEntry(TriggerStoreKeyEnum.RepeatInterval, ((ISimpleTrigger)operable).RepeatInterval.ToString()));
-                    entries.Add(new HashEntry(TriggerStoreKeyEnum.TimesTriggered, ((ISimpleTrigger)operable).TimesTriggered));
+                    entries.Add(new HashEntry(TriggerStoreKey.TriggerType, TriggerStoreKey.TriggerTypeSimple));
+                    entries.Add(new HashEntry(TriggerStoreKey.RepeatCount, ((ISimpleTrigger)operable).RepeatCount));
+                    entries.Add(new HashEntry(TriggerStoreKey.RepeatInterval, ((ISimpleTrigger)operable).RepeatInterval.ToString()));
+                    entries.Add(new HashEntry(TriggerStoreKey.TimesTriggered, ((ISimpleTrigger)operable).TimesTriggered));
                     break;
                 case ICronTrigger _:
-                    entries.Add(new HashEntry(TriggerStoreKeyEnum.TriggerType, TriggerStoreKeyEnum.TriggerTypeCron));
-                    entries.Add(new HashEntry(TriggerStoreKeyEnum.CronExpression, ((ICronTrigger)operable).CronExpressionString));
-                    entries.Add(new HashEntry(TriggerStoreKeyEnum.TimeZoneId, ((ICronTrigger)operable).TimeZone.Id));
+                    entries.Add(new HashEntry(TriggerStoreKey.TriggerType, TriggerStoreKey.TriggerTypeCron));
+                    entries.Add(new HashEntry(TriggerStoreKey.CronExpression, ((ICronTrigger)operable).CronExpressionString));
+                    entries.Add(new HashEntry(TriggerStoreKey.TimeZoneId, ((ICronTrigger)operable).TimeZone.Id));
                     break;
             }
 
@@ -1268,7 +1268,7 @@
             return new Random().Next(max - min + 1) + min;
         }
 
-        protected async Task ReleaseOrphanedTriggersAsync(TriggerStateEnum currentState, TriggerStateEnum newState)
+        protected async Task ReleaseOrphanedTriggersAsync(TriggerState currentState, TriggerState newState)
         {
             var triggers = redis.SortedSetRangeByScoreWithScoresAsync(schema.TriggerStateKey(currentState), 0, -1);
 
@@ -1288,9 +1288,9 @@
             if (misfireTime - await GetLastTriggersReleaseTimeAsync() > triggerLockTimeout)
             {
                 Task.WaitAll(
-                    ReleaseOrphanedTriggersAsync(TriggerStateEnum.Acquired, TriggerStateEnum.Waiting),
-                    ReleaseOrphanedTriggersAsync(TriggerStateEnum.Blocked, TriggerStateEnum.Waiting),
-                    ReleaseOrphanedTriggersAsync(TriggerStateEnum.PausedBlocked, TriggerStateEnum.Paused));
+                    ReleaseOrphanedTriggersAsync(TriggerState.Acquired, TriggerState.Waiting),
+                    ReleaseOrphanedTriggersAsync(TriggerState.Blocked, TriggerState.Waiting),
+                    ReleaseOrphanedTriggersAsync(TriggerState.PausedBlocked, TriggerState.Paused));
                 await SetLastTriggerReleaseTimeAsync(DateTimeOffset.UtcNow.DateTime.ToUnixTimeMillieSeconds());
             }
         }
@@ -1300,7 +1300,7 @@
             return redis.StringSetAsync(schema.LastTriggerReleaseTime(), time);
         }
 
-        protected async Task<bool> SetTriggerStateAsync(TriggerStateEnum state, double score, string triggerHashKey)
+        protected async Task<bool> SetTriggerStateAsync(TriggerState state, double score, string triggerHashKey)
         {
             await UnsetTriggerStateAsync(triggerHashKey);
             return await redis.SortedSetAddAsync(schema.TriggerStateKey(state), triggerHashKey, score);
@@ -1359,58 +1359,58 @@
         private void PopulateTrigger(TriggerKey triggerKey, IDictionary<string, string> properties, IOperableTrigger trigger)
         {
             trigger.Key = triggerKey;
-            trigger.JobKey = schema.JobKey(properties[TriggerStoreKeyEnum.JobHash]);
-            trigger.Description = properties[TriggerStoreKeyEnum.Description];
-            trigger.FireInstanceId = properties[TriggerStoreKeyEnum.FireInstanceId];
-            trigger.CalendarName = properties[TriggerStoreKeyEnum.CalendarName];
-            trigger.Priority = int.Parse(properties[TriggerStoreKeyEnum.Priority]);
-            trigger.MisfireInstruction = int.Parse(properties[TriggerStoreKeyEnum.MisfireInstruction]);
-            trigger.StartTimeUtc = DateTimeFromUnixTimestampMillis(double.Parse(properties[TriggerStoreKeyEnum.StartTime]));
+            trigger.JobKey = schema.JobKey(properties[TriggerStoreKey.JobHash]);
+            trigger.Description = properties[TriggerStoreKey.Description];
+            trigger.FireInstanceId = properties[TriggerStoreKey.FireInstanceId];
+            trigger.CalendarName = properties[TriggerStoreKey.CalendarName];
+            trigger.Priority = int.Parse(properties[TriggerStoreKey.Priority]);
+            trigger.MisfireInstruction = int.Parse(properties[TriggerStoreKey.MisfireInstruction]);
+            trigger.StartTimeUtc = DateTimeFromUnixTimestampMillis(double.Parse(properties[TriggerStoreKey.StartTime]));
 
-            trigger.EndTimeUtc = string.IsNullOrEmpty(properties[TriggerStoreKeyEnum.EndTime])
+            trigger.EndTimeUtc = string.IsNullOrEmpty(properties[TriggerStoreKey.EndTime])
                                      ? default(DateTimeOffset?)
-                                     : DateTimeFromUnixTimestampMillis(double.Parse(properties[TriggerStoreKeyEnum.EndTime]));
+                                     : DateTimeFromUnixTimestampMillis(double.Parse(properties[TriggerStoreKey.EndTime]));
 
             if (trigger is AbstractTrigger)
             {
                 trigger.SetNextFireTimeUtc(
-                    string.IsNullOrEmpty(properties[TriggerStoreKeyEnum.NextFireTime])
+                    string.IsNullOrEmpty(properties[TriggerStoreKey.NextFireTime])
                         ? default(DateTimeOffset?)
-                        : DateTimeFromUnixTimestampMillis(double.Parse(properties[TriggerStoreKeyEnum.NextFireTime])));
+                        : DateTimeFromUnixTimestampMillis(double.Parse(properties[TriggerStoreKey.NextFireTime])));
 
                 trigger.SetPreviousFireTimeUtc(
-                    string.IsNullOrEmpty(properties[TriggerStoreKeyEnum.PrevFireTime])
+                    string.IsNullOrEmpty(properties[TriggerStoreKey.PrevFireTime])
                         ? default(DateTimeOffset?)
-                        : DateTimeFromUnixTimestampMillis(double.Parse(properties[TriggerStoreKeyEnum.PrevFireTime])));
+                        : DateTimeFromUnixTimestampMillis(double.Parse(properties[TriggerStoreKey.PrevFireTime])));
             }
         }
 
         private IOperableTrigger RetrieveTrigger(TriggerKey triggerKey, IDictionary<string, string> properties)
         {
-            var type = properties[TriggerStoreKeyEnum.TriggerType];
+            var type = properties[TriggerStoreKey.TriggerType];
 
             if (string.IsNullOrEmpty(type))
             {
                 return null;
             }
 
-            if (type.Equals(TriggerStoreKeyEnum.TriggerTypeSimple, StringComparison.OrdinalIgnoreCase))
+            if (type.Equals(TriggerStoreKey.TriggerTypeSimple, StringComparison.OrdinalIgnoreCase))
             {
                 var simpleTrigger = new SimpleTriggerImpl();
 
-                if (!string.IsNullOrEmpty(properties[TriggerStoreKeyEnum.RepeatCount]))
+                if (!string.IsNullOrEmpty(properties[TriggerStoreKey.RepeatCount]))
                 {
-                    simpleTrigger.RepeatCount = Convert.ToInt32(properties[TriggerStoreKeyEnum.RepeatCount]);
+                    simpleTrigger.RepeatCount = Convert.ToInt32(properties[TriggerStoreKey.RepeatCount]);
                 }
 
-                if (!string.IsNullOrEmpty(properties[TriggerStoreKeyEnum.RepeatInterval]))
+                if (!string.IsNullOrEmpty(properties[TriggerStoreKey.RepeatInterval]))
                 {
-                    simpleTrigger.RepeatInterval = TimeSpan.Parse(properties[TriggerStoreKeyEnum.RepeatInterval]);
+                    simpleTrigger.RepeatInterval = TimeSpan.Parse(properties[TriggerStoreKey.RepeatInterval]);
                 }
 
-                if (!string.IsNullOrEmpty(properties[TriggerStoreKeyEnum.TimesTriggered]))
+                if (!string.IsNullOrEmpty(properties[TriggerStoreKey.TimesTriggered]))
                 {
-                    simpleTrigger.TimesTriggered = Convert.ToInt32(properties[TriggerStoreKeyEnum.TimesTriggered]);
+                    simpleTrigger.TimesTriggered = Convert.ToInt32(properties[TriggerStoreKey.TimesTriggered]);
                 }
 
                 PopulateTrigger(triggerKey, properties, simpleTrigger);
@@ -1420,14 +1420,14 @@
 
             var cronTrigger = new CronTriggerImpl();
 
-            if (!string.IsNullOrEmpty(properties[TriggerStoreKeyEnum.TimeZoneId]))
+            if (!string.IsNullOrEmpty(properties[TriggerStoreKey.TimeZoneId]))
             {
-                cronTrigger.TimeZone = TimeZoneInfo.FindSystemTimeZoneById(properties[TriggerStoreKeyEnum.TimeZoneId]);
+                cronTrigger.TimeZone = TimeZoneInfo.FindSystemTimeZoneById(properties[TriggerStoreKey.TimeZoneId]);
             }
 
-            if (!string.IsNullOrEmpty(properties[TriggerStoreKeyEnum.CronExpression]))
+            if (!string.IsNullOrEmpty(properties[TriggerStoreKey.CronExpression]))
             {
-                cronTrigger.CronExpressionString = properties[TriggerStoreKeyEnum.CronExpression];
+                cronTrigger.CronExpressionString = properties[TriggerStoreKey.CronExpression];
             }
 
             PopulateTrigger(triggerKey, properties, cronTrigger);
@@ -1448,16 +1448,16 @@
 
                 if (await redis.SetContainsAsync(schema.BlockedJobsSet(), jobHashKey))
                 {
-                    await SetTriggerStateAsync(TriggerStateEnum.PausedBlocked, nextFireTime, schema.TriggerHashKey(trigger.Key));
+                    await SetTriggerStateAsync(TriggerState.PausedBlocked, nextFireTime, schema.TriggerHashKey(trigger.Key));
                 }
                 else
                 {
-                    await SetTriggerStateAsync(TriggerStateEnum.Paused, nextFireTime, schema.TriggerHashKey(trigger.Key));
+                    await SetTriggerStateAsync(TriggerState.Paused, nextFireTime, schema.TriggerHashKey(trigger.Key));
                 }
             }
             else if (trigger.GetNextFireTimeUtc().HasValue)
             {
-                await SetTriggerStateAsync(TriggerStateEnum.Waiting, nextFireTime, schema.TriggerHashKey(trigger.Key));
+                await SetTriggerStateAsync(TriggerState.Waiting, nextFireTime, schema.TriggerHashKey(trigger.Key));
             }
         }
     }

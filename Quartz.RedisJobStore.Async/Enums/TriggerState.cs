@@ -1,6 +1,6 @@
 ﻿namespace Quartz.RedisJobStore.Async.Enums
 {
-    public enum TriggerStateEnum
+    public enum TriggerState
     {
         Waiting,
 
