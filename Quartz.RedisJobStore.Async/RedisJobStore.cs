@@ -21,10 +21,6 @@
     {
         private readonly ILog logger;
 
-        private IDatabase redis;
-
-        private RedisKeySchema schema;
-
         private RedisStorage storage;
 
         public RedisJobStore()
@@ -153,14 +149,13 @@
             ISchedulerSignaler signaler,
             CancellationToken cancellationToken = new CancellationToken())
         {
-            schema = new RedisKeySchema(
+            var schema = new RedisKeySchema(
                 string.IsNullOrEmpty(KeyDelimiter) ? ":" : KeyDelimiter,
                 string.IsNullOrEmpty(KeyPrefix) ? string.Empty : KeyPrefix);
             Multiplexer = ConnectionMultiplexer.ConnectAsync(RedisConfiguration);
-            redis = (await Multiplexer).GetDatabase();
             storage = new RedisStorage(
                 schema,
-                redis,
+                (await Multiplexer).GetDatabase(),
                 signaler,
                 InstanceId,
                 TriggerLockTimeout ?? 300000,
@@ -307,17 +302,17 @@
 
         public Task SchedulerPaused(CancellationToken cancellationToken = new CancellationToken())
         {
-            return null;
+            return Task.FromResult(0);
         }
 
         public Task SchedulerResumed(CancellationToken cancellationToken = new CancellationToken())
         {
-            return null;
+            return Task.FromResult(0);
         }
 
         public Task SchedulerStarted(CancellationToken cancellationToken = new CancellationToken())
         {
-            return null;
+            return Task.FromResult(0);
         }
 
         public Task Shutdown(CancellationToken cancellationToken = new CancellationToken())

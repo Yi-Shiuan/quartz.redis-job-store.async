@@ -1,6 +1,6 @@
 ﻿namespace Quartz.RedisJobStore.Async.Enums
 {
-    public class JobStoreKeyEnum
+    public class JobStoreKey
     {
         public static readonly string Description = "Description";
 
@@ -13,5 +13,9 @@
         public static readonly string BlockTime = "Block_Time";
 
         public static readonly string BlockedBy = "Block_By";
+
+        protected JobStoreKey()
+        {
+        }
     }
 }

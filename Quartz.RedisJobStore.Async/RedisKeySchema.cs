@@ -151,7 +151,7 @@
             return $"{prefix}Triggers";
         }
 
-        public string TriggerStateKey(TriggerStateEnum state)
+        public string TriggerStateKey(TriggerState state)
         {
             return $"{prefix}{state.ToString()}_Triggers";
         }

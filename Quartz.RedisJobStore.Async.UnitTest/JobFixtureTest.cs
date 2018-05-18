@@ -42,10 +42,10 @@
                  .Returns(
                       new[]
                           {
-                              new HashEntry(JobStoreKeyEnum.JobClass, typeof(TestJob).AssemblyQualifiedName),
-                              new HashEntry(JobStoreKeyEnum.Description, description),
-                              new HashEntry(JobStoreKeyEnum.RequestRecovery, true),
-                              new HashEntry(JobStoreKeyEnum.IsDurable, false)
+                              new HashEntry(JobStoreKey.JobClass, typeof(TestJob).AssemblyQualifiedName),
+                              new HashEntry(JobStoreKey.Description, description),
+                              new HashEntry(JobStoreKey.RequestRecovery, true),
+                              new HashEntry(JobStoreKey.IsDurable, false)
                           });
 
             redis.HashGetAllAsync(schema.JobDataMapHashKey(key))
@@ -70,10 +70,10 @@
                  .Returns(
                       new[]
                           {
-                              new HashEntry(JobStoreKeyEnum.JobClass, typeof(TestJob).AssemblyQualifiedName),
-                              new HashEntry(JobStoreKeyEnum.Description, description),
-                              new HashEntry(JobStoreKeyEnum.RequestRecovery, true),
-                              new HashEntry(JobStoreKeyEnum.IsDurable, false)
+                              new HashEntry(JobStoreKey.JobClass, typeof(TestJob).AssemblyQualifiedName),
+                              new HashEntry(JobStoreKey.Description, description),
+                              new HashEntry(JobStoreKey.RequestRecovery, true),
+                              new HashEntry(JobStoreKey.IsDurable, false)
                           });
 
             var job = await storage.RetrieveJobAsync(key);
@@ -96,12 +96,12 @@
                           {
                               var hash = info.Arg<HashEntry[]>().ToStringDictionary();
                               Assert.AreEqual(6, hash.Count);
-                              Assert.AreEqual(description, hash[JobStoreKeyEnum.Description]);
-                              Assert.AreEqual(typeof(TestJob).AssemblyQualifiedName, hash[JobStoreKeyEnum.JobClass]);
-                              Assert.AreEqual("0", hash[JobStoreKeyEnum.IsDurable]);
-                              Assert.AreEqual("0", hash[JobStoreKeyEnum.RequestRecovery]);
-                              Assert.IsEmpty(hash[JobStoreKeyEnum.BlockedBy]);
-                              Assert.IsEmpty(hash[JobStoreKeyEnum.BlockTime]);
+                              Assert.AreEqual(description, hash[JobStoreKey.Description]);
+                              Assert.AreEqual(typeof(TestJob).AssemblyQualifiedName, hash[JobStoreKey.JobClass]);
+                              Assert.AreEqual("0", hash[JobStoreKey.IsDurable]);
+                              Assert.AreEqual("0", hash[JobStoreKey.RequestRecovery]);
+                              Assert.IsEmpty(hash[JobStoreKey.BlockedBy]);
+                              Assert.IsEmpty(hash[JobStoreKey.BlockTime]);
                           });
 
             redis.When(x => x.HashSetAsync(schema.JobDataMapHashKey(job.Key), Arg.Any<HashEntry[]>()))
@@ -147,12 +147,12 @@
                           {
                               var hash = info.Arg<HashEntry[]>().ToStringDictionary();
                               Assert.AreEqual(6, hash.Count);
-                              Assert.AreEqual(description, hash[JobStoreKeyEnum.Description]);
-                              Assert.AreEqual(typeof(TestJob).AssemblyQualifiedName, hash[JobStoreKeyEnum.JobClass]);
-                              Assert.AreEqual("0", hash[JobStoreKeyEnum.IsDurable]);
-                              Assert.AreEqual("0", hash[JobStoreKeyEnum.RequestRecovery]);
-                              Assert.IsEmpty(hash[JobStoreKeyEnum.BlockedBy]);
-                              Assert.IsEmpty(hash[JobStoreKeyEnum.BlockTime]);
+                              Assert.AreEqual(description, hash[JobStoreKey.Description]);
+                              Assert.AreEqual(typeof(TestJob).AssemblyQualifiedName, hash[JobStoreKey.JobClass]);
+                              Assert.AreEqual("0", hash[JobStoreKey.IsDurable]);
+                              Assert.AreEqual("0", hash[JobStoreKey.RequestRecovery]);
+                              Assert.IsEmpty(hash[JobStoreKey.BlockedBy]);
+                              Assert.IsEmpty(hash[JobStoreKey.BlockTime]);
                           });
 
             redis.When(x => x.HashSetAsync(schema.JobDataMapHashKey(job.Key), Arg.Any<HashEntry[]>()))
