@@ -81,7 +81,7 @@
             TimeSpan timeWindow)
         {
             var score = ToUnixTimeMilliseconds(noLaterThan.Add(timeWindow));
-            var acquireNextTrigger = redis.SortedSetRangeByScoreWithScoresAsync(
+            var acquireNextTriggers = redis.SortedSetRangeByScoreWithScoresAsync(
                 schema.TriggerStateKey(TriggerState.Waiting),
                 0,
                 score,
@@ -90,82 +90,22 @@
                 0,
                 maxCount);
 
-            if ((await acquireNextTrigger).Length > 0)
+            if ((await acquireNextTriggers).Length == 0)
             {
-                var triggers = new List<IOperableTrigger>((await acquireNextTrigger).Length);
-
-                foreach (var item in await acquireNextTrigger)
-                {
-                    var trigger = await RetrieveTriggerAsync(schema.TriggerKey(item.Element));
-                    await SetTriggerStateAsync(TriggerState.Acquired, item.Score, item.Element);
-                    triggers.Add( trigger);
-                }
-
-                return triggers;
+                return new List<IOperableTrigger>();
             }
 
-            return new List<IOperableTrigger>();
+            var triggers = new List<IOperableTrigger>((await acquireNextTriggers).Length);
 
+            foreach (var item in await acquireNextTriggers)
+            {
+                var trigger = RetrieveTriggerAsync(schema.TriggerKey(item.Element));
+                await SetTriggerStateAsync(TriggerState.Acquired, item.Score, item.Element);
+                triggers.Add(await trigger);
+            }
 
+            return triggers;
 
-
-            //var triggers = new List<IOperableTrigger>();
-            //await ReleaseTriggersAsync();
-
-            //var retry = false;
-
-            //do
-            //{
-            //    var acquiredJobHashKeysForNoConcurrentExec = new List<string>();
-
-            //    var score = ToUnixTimeMilliseconds(noLaterThan.Add(timeWindow));
-
-            //    var waitingStateTriggers = redis.SortedSetRangeByScoreWithScoresAsync(
-            //                                   schema.TriggerStateKey(TriggerState.Waiting),
-            //                                   0,
-            //                                   score,
-            //                                   Exclude.None,
-            //                                   Order.Ascending,
-            //                                   0,
-            //                                   maxCount);
-            //    foreach (var sortedSetEntry in await waitingStateTriggers)
-            //    {
-            //        var trigger = RetrieveTriggerAsync(schema.TriggerKey(sortedSetEntry.Element));
-
-            //        if (await ApplyMisfireAsync(await trigger))
-            //        {
-            //            retry = true;
-            //            break;
-            //        }
-
-            //        if (!(await trigger).GetNextFireTimeUtc().HasValue)
-            //        {
-            //            await UnsetTriggerStateAsync(sortedSetEntry.Element);
-            //            continue;
-            //        }
-
-            //        var jobHashKey = schema.JobHashKey((await trigger).JobKey);
-
-            //        var job = RetrieveJobAsync((await trigger).JobKey);
-
-            //        if (await job != null && (await job).ConcurrentExecutionDisallowed)
-            //        {
-            //            if (acquiredJobHashKeysForNoConcurrentExec.Contains(jobHashKey))
-            //            {
-            //                continue;
-            //            }
-
-            //            acquiredJobHashKeysForNoConcurrentExec.Add(jobHashKey);
-            //        }
-
-            //        await LockTriggerAsync((await trigger).Key);
-            //        await SetTriggerStateAsync(TriggerState.Acquired, sortedSetEntry.Score, sortedSetEntry.Element);
-            //        triggers.Add(await trigger);
-            //    }
-            //}
-            //while (retry);
-
-            //return triggers;
         }
 
         public async Task<IReadOnlyCollection<string>> CalendarNamesAsync()
@@ -321,22 +261,6 @@
             }
 
             return jobKeys;
-        }
-
-        public async Task LockWithWaitAsync()
-        {
-            while (!await LockAsync())
-            {
-                try
-                {
-                    logger.Info("waiting for redis lock");
-                    Thread.Sleep(RandomInt(75, 125));
-                }
-                catch (ThreadInterruptedException ex)
-                {
-                    logger.ErrorFormat("error out on waiting for a lock", ex);
-                }
-            }
         }
 
         public async Task<int> NumberOfCalendarsAsync()
@@ -1106,11 +1030,6 @@
             return result;
         }
 
-        public Task<bool> UnlockAsync()
-        {
-            return redis.LockReleaseAsync(schema.LockKey, lockValue);
-        }
-
         public async Task<bool> UnsetTriggerStateAsync(string triggerHashKey)
         {
             foreach (TriggerState state in Enum.GetValues(typeof(TriggerState)))
@@ -1357,19 +1276,6 @@
             }
 
             return result;
-        }
-
-        private async Task<bool> LockAsync()
-        {
-            var id = Guid.NewGuid().ToString();
-
-            var reacquired = await redis.LockTakeAsync(schema.LockKey, id, TimeSpan.FromMilliseconds(redisLockTimeout));
-            if (reacquired)
-            {
-                lockValue = id;
-            }
-
-            return reacquired;
         }
 
         private void PopulateTrigger(TriggerKey triggerKey, IDictionary<string, string> properties, IOperableTrigger trigger)

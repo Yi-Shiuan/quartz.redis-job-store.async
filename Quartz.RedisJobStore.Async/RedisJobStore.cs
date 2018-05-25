@@ -4,6 +4,7 @@
 
     using System;
     using System.Collections.Generic;
+    using System.Diagnostics;
     using System.Linq;
     using System.Threading;
     using System.Threading.Tasks;
@@ -149,6 +150,7 @@
             ISchedulerSignaler signaler,
             CancellationToken cancellationToken = new CancellationToken())
         {
+            var sw = Stopwatch.StartNew();
             var schema = new RedisKeySchema(
                 string.IsNullOrEmpty(KeyDelimiter) ? ":" : KeyDelimiter,
                 string.IsNullOrEmpty(KeyPrefix) ? string.Empty : KeyPrefix);
@@ -161,6 +163,8 @@
                 TriggerLockTimeout ?? 300000,
                 RedisLockTimeout ?? 5000,
                 MisfireThreshold ?? 60000);
+
+            logger.Debug($"Initialize Done - Elapsed{sw.Elapsed:g}");
         }
 
         public Task<bool> IsJobGroupPaused(string groupName, CancellationToken cancellationToken = new CancellationToken())
@@ -386,9 +390,9 @@
 
         private async Task DoWithLock(Task action, string errorMessage = "Job Storage error")
         {
+            var sw = Stopwatch.StartNew();
             try
             {
-                await storage.LockWithWaitAsync();
                 await action;
             }
             catch (ObjectAlreadyExistsException ex)
@@ -402,16 +406,19 @@
             }
             finally
             {
-                await storage.UnlockAsync();
+                logger.Debug($"Execute done, Elapsed: {sw.Elapsed:g}");
             }
         }
 
         private async Task DoWithLock(Task[] action, string errorMessage = "Job Storage error")
         {
+            var sw = Stopwatch.StartNew();
             try
             {
-                await storage.LockWithWaitAsync();
-                await Task.WhenAll(action);
+                foreach (var task in action)
+                {
+                    await task;
+                }
             }
             catch (ObjectAlreadyExistsException ex)
             {
@@ -424,15 +431,15 @@
             }
             finally
             {
-                await storage.UnlockAsync();
+                logger.Debug($"Execute done, Elapsed: {sw.Elapsed:g}");
             }
         }
 
         private async Task<T> DoWithLock<T>(Task<T> fun, string errorMessage = "Job Storage error")
         {
+            var sw = Stopwatch.StartNew();
             try
             {
-                await storage.LockWithWaitAsync();
                 return await fun;
             }
             catch (ObjectAlreadyExistsException ex)
@@ -447,7 +454,7 @@
             }
             finally
             {
-                await storage.UnlockAsync();
+                logger.Debug($"Execute done, Elapsed: {sw.Elapsed:g}");
             }
         }
 

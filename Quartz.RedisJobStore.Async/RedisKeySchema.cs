@@ -21,9 +21,7 @@
             this.delimiter = delimiter;
             this.prefix = prefix;
         }
-
-        public RedisKey LockKey => $"{prefix}Lock";
-
+        
         public string BlockedJobs()
         {
             return $"{prefix}Blocked_Jobs";
@@ -82,7 +80,7 @@
         public JobKey JobKey(string key)
         {
             var hashParts = Split(key);
-            return new JobKey(hashParts[1], hashParts[0]);
+            return new JobKey(hashParts[2], hashParts[1]);
         }
 
         public string JobsKey()
