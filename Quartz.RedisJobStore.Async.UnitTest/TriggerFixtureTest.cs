@@ -108,8 +108,6 @@
                           });
 
             Assert.DoesNotThrowAsync(async () => await storage.ResumeTriggerAsync(trigger));
-
-            redis.Received().SortedSetAddAsync(schema.TriggerStateKey(state), schema.TriggerHashKey(trigger), Arg.Any<double>());
         }
 
         [Test]
@@ -253,7 +251,7 @@
                  .Returns(
                       new[]
                           {
-                              new HashEntry(TriggerStoreKey.JobHash, "UnitTest:UT:job1"),
+                              new HashEntry(TriggerStoreKey.JobHash, "UnitTestUT:job1"),
                               new HashEntry(TriggerStoreKey.Description, string.Empty),
                               new HashEntry(TriggerStoreKey.NextFireTime, "1522749600000"),
                               new HashEntry(TriggerStoreKey.PrevFireTime, string.Empty),
@@ -270,21 +268,14 @@
                               new HashEntry(TriggerStoreKey.TimesTriggered, "0")
                           });
             redis.SetLengthAsync(schema.TriggerGroupSetKey(trigger.Group)).Returns(triggerGroupLength);
-            redis.SetLengthAsync(schema.JobTriggersKey(schema.JobKey("UnitTest:UT:job1"))).Returns(jobTriggerLength);
-            redis.HashGetAllAsync(schema.JobHashKey(schema.JobKey("UnitTest:UT:job1")))
-                 .Returns(
-                      new[]
-                          {
-                              new HashEntry(JobStoreKey.JobClass, typeof(TestJob).AssemblyQualifiedName),
-                              new HashEntry(JobStoreKey.Description, description),
-                              new HashEntry(JobStoreKey.RequestRecovery, true),
-                              new HashEntry(JobStoreKey.IsDurable, false)
-                          });
+            redis.SetLengthAsync(schema.JobTriggersKey(schema.JobKey("UnitTestUT:job1"))).Returns(jobTriggerLength);
+            redis.HashGetAllAsync(schema.JobHashKey(schema.JobKey("UnitTestUT:job1")))
+                 .Returns(RestoreJob());
 
             Assert.DoesNotThrowAsync(async () => await storage.RemoveTriggerAsync(trigger, removeNonDurableJob));
             redis.Received(1).SetRemove(schema.TriggersKey(), schema.TriggerHashKey(trigger), CommandFlags.FireAndForget);
             redis.Received(1).SetRemove(schema.TriggerGroupSetKey(trigger.Group), schema.TriggerHashKey(trigger), CommandFlags.FireAndForget);
-            redis.Received(1).SetRemove(schema.JobTriggersKey(schema.JobKey("UnitTest:UT:job1")), schema.TriggerHashKey(trigger), CommandFlags.FireAndForget);
+            redis.Received(1).SetRemove(schema.JobTriggersKey(schema.JobKey("UnitTestUT:job1")), schema.TriggerHashKey(trigger), CommandFlags.FireAndForget);
         }
 
         [Test]
@@ -295,7 +286,7 @@
                  .Returns(
                       new[]
                           {
-                              new HashEntry(TriggerStoreKey.JobHash, "UnitTest:UT:job1"),
+                              new HashEntry(TriggerStoreKey.JobHash, "UnitTestUT:job1"),
                               new HashEntry(TriggerStoreKey.Description, string.Empty),
                               new HashEntry(TriggerStoreKey.NextFireTime, "1522749600000"),
                               new HashEntry(TriggerStoreKey.PrevFireTime, string.Empty),
@@ -320,34 +311,55 @@
         public async Task RetrieveCronTriggerAndTriggerExistShouldBeSuccessfully()
         {
             var trigger = new TriggerKey(name, @group);
-            redis.HashGetAllAsync(schema.TriggerHashKey(trigger))
-                 .Returns(
-                      new[]
-                          {
-                              new HashEntry(TriggerStoreKey.JobHash, "UnitTest:UT:job1"),
-                              new HashEntry(TriggerStoreKey.Description, string.Empty),
-                              new HashEntry(TriggerStoreKey.NextFireTime, "1522749600000"),
-                              new HashEntry(TriggerStoreKey.PrevFireTime, string.Empty),
-                              new HashEntry(TriggerStoreKey.Priority, "5"),
-                              new HashEntry(TriggerStoreKey.StartTime, "1522749600000"),
-                              new HashEntry(TriggerStoreKey.EndTime, string.Empty),
-                              new HashEntry(TriggerStoreKey.FinalFireTime, string.Empty),
-                              new HashEntry(TriggerStoreKey.FireInstanceId, string.Empty),
-                              new HashEntry(TriggerStoreKey.MisfireInstruction, "0"),
-                              new HashEntry(TriggerStoreKey.CalendarName, string.Empty),
-                              new HashEntry(TriggerStoreKey.TriggerType, "CRON"),
-                              new HashEntry(TriggerStoreKey.TimeZoneId, TimeZoneInfo.Utc.Id),
-                              new HashEntry(TriggerStoreKey.CronExpression, "0 0 */3 ? * * *"),
-                          });
+            redis.HashGetAllAsync(schema.TriggerHashKey(trigger)).Returns(RestoreTrigger("UnitTestUT:job1"));
             var result = await storage.RetrieveTriggerAsync(trigger);
             Assert.NotNull(result);
             Assert.IsTrue(result is ICronTrigger);
         }
-
+        
         private void ComputeFirstFireTime(ITrigger trigger)
         {
             var t = (AbstractTrigger)trigger;
             t.ComputeFirstFireTimeUtc(null);
+        }
+
+        private double ToUnixTimeMilliseconds(DateTimeOffset dateTimeOffset)
+        {
+            // Truncate sub-millisecond precision before offsetting by the Unix Epoch to avoid
+            // the last digit being off by one for dates that result in negative Unix times
+            return (dateTimeOffset - new DateTimeOffset(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc))).TotalMilliseconds;
+        }
+
+        private HashEntry[] RestoreTrigger(string job)
+        {
+            return new[]
+                       {
+                           new HashEntry(TriggerStoreKey.JobHash, job),
+                           new HashEntry(TriggerStoreKey.Description, string.Empty),
+                           new HashEntry(TriggerStoreKey.NextFireTime, "1522749600000"),
+                           new HashEntry(TriggerStoreKey.PrevFireTime, string.Empty),
+                           new HashEntry(TriggerStoreKey.Priority, "5"),
+                           new HashEntry(TriggerStoreKey.StartTime, "1522749600000"),
+                           new HashEntry(TriggerStoreKey.EndTime, string.Empty),
+                           new HashEntry(TriggerStoreKey.FinalFireTime, string.Empty),
+                           new HashEntry(TriggerStoreKey.FireInstanceId, string.Empty),
+                           new HashEntry(TriggerStoreKey.MisfireInstruction, "-1"),
+                           new HashEntry(TriggerStoreKey.CalendarName, string.Empty),
+                           new HashEntry(TriggerStoreKey.TriggerType, "CRON"),
+                           new HashEntry(TriggerStoreKey.TimeZoneId, TimeZoneInfo.Utc.Id),
+                           new HashEntry(TriggerStoreKey.CronExpression, "* 0 0 ? * * *"),
+                       };
+        }
+
+        private HashEntry[] RestoreJob()
+        {
+            return new[]
+                       {
+                           new HashEntry(JobStoreKey.JobClass, typeof(TestJob).AssemblyQualifiedName),
+                           new HashEntry(JobStoreKey.Description, description),
+                           new HashEntry(JobStoreKey.RequestRecovery, true),
+                           new HashEntry(JobStoreKey.IsDurable, false)
+                       };
         }
     }
 }

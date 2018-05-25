@@ -19,7 +19,7 @@
         public RedisKeySchema(string delimiter, string prefix)
         {
             this.delimiter = delimiter;
-            this.prefix = $"{prefix}:";
+            this.prefix = prefix;
         }
 
         public RedisKey LockKey => $"{prefix}Lock";
@@ -76,13 +76,13 @@
 
         public string JobHashKey(JobKey key)
         {
-            return $"{prefix}{key.Group}{delimiter}{key.Name}";
+            return $"{prefix}Job{delimiter}{key.Group}{delimiter}{key.Name}";
         }
 
         public JobKey JobKey(string key)
         {
             var hashParts = Split(key);
-            return new JobKey(hashParts[2], hashParts[1]);
+            return new JobKey(hashParts[1], hashParts[0]);
         }
 
         public string JobsKey()
@@ -163,7 +163,7 @@
 
         public string[] Split(string input)
         {
-            return input.Split(
+            return input.Replace(prefix, string.Empty).Split(
                 new[]
                     {
                         delimiter
