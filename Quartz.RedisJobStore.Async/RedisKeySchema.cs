@@ -34,6 +34,40 @@
             return $"Job_Groups{delimiter}{key}";
         }
 
+        public string RedisJobKey(JobKey key)
+        {
+            return $"Job{delimiter}{key.Group}{delimiter}{key.Name}";
+        }
+
+        public JobKey ToJobKey(string key)
+        {
+            var t = Split(key);
+            return new JobKey(t[1], t[0]);
+        }
+
+        public string RedisJobKey()
+        {
+            return "Jobs";
+        }
+        
+        public string JobStoreKey(JobKey key)
+        {
+            return $"{key.Group}{delimiter}{key.Name}";
+        }
+
+        public string RedisJobDataMap(JobKey jobKey)
+        {
+            return $"Job_DataMap{delimiter}{jobKey.Group}{delimiter}{jobKey.Name}";
+        }
+        
+        
+        
+        
+        
+        
+        
+        
+
         public string BlockedJobs()
         {
             return "Blocked_Jobs";
@@ -174,12 +208,6 @@
         public string TriggerStateKey(TriggerState state)
         {
             return $"{state.ToString()}_Triggers";
-        }
-
-        public JobKey ToJobKey(string key)
-        {
-            var t = Split(key);
-            return new JobKey(t[1], t[0]);
         }
     }
 }

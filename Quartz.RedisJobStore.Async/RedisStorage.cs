@@ -712,22 +712,33 @@
             }
         }
 
-        public async Task StoreJobAsync(IJobDetail jobDetail, bool replaceExisting)
+        public async Task StoreJobAsync(IJobDetail job, bool replaceExisting)
         {
-            var jobHashKey = schema.JobHashKey(jobDetail.Key);
-            var jobDataMapHashKey = schema.JobDataMapHashKey(jobDetail.Key);
-            var jobGroupSetKey = schema.JobGroupKey(jobDetail.Key.Group);
+            var redisJobGroupKey = schema.RedisJobGroupKey(job.Key);
+            var jobStoreKey = schema.JobStoreKey(job.Key);
+            
+            redis.SetAdd(redisJobGroupKey, jobStoreKey, CommandFlags.FireAndForget);
+            redis.SetAdd(schema.RedisJobKey(), jobStoreKey, CommandFlags.FireAndForget);
+            redis.SetAdd(schema.RedisJobGroupKey(), redisJobGroupKey, CommandFlags.FireAndForget);
+            redis.HashSet(schema.RedisJobDataMap(job.Key), job.JobDataMap.ToDataMapEntity(),
+                CommandFlags.FireAndForget);
+            redis.HashSet(schema.RedisJobKey(job.Key), job.ToJobEntity(), CommandFlags.FireAndForget);
 
-            if (await redis.KeyExistsAsync(jobHashKey) && !replaceExisting)
-            {
-                throw new ObjectAlreadyExistsException(jobDetail);
-            }
 
-            redis.HashSet(jobHashKey, ConvertToHashEntries(jobDetail), CommandFlags.FireAndForget);
-            redis.HashSet(jobDataMapHashKey, ConvertToHashEntries(jobDetail.JobDataMap), CommandFlags.FireAndForget);
-            redis.SetAdd(schema.JobsKey(), jobHashKey, CommandFlags.FireAndForget);
-            redis.SetAdd(schema.JobGroupsKey(), jobGroupSetKey, CommandFlags.FireAndForget);
-            redis.SetAdd(jobGroupSetKey, jobHashKey, CommandFlags.FireAndForget);
+//            var redisJobKey = schema.RedisJobKey(jobDetail.Key);
+//            var jobDataMapHashKey = schema.JobDataMapHashKey(jobDetail.Key);
+//            var jobGroupSetKey = schema.JobGroupKey(jobDetail.Key.Group);
+//
+//            if (await redis.KeyExistsAsync(redisJobKey) && !replaceExisting)
+//            {
+//                throw new ObjectAlreadyExistsException(jobDetail);
+//            }
+//
+//            redis.HashSet(redisJobKey, ConvertToHashEntries(jobDetail), CommandFlags.FireAndForget);
+//            redis.HashSet(jobDataMapHashKey, ConvertToHashEntries(jobDetail.JobDataMap), CommandFlags.FireAndForget);
+//            redis.SetAdd(schema.JobsKey(), jobHashKey, CommandFlags.FireAndForget);
+//            redis.SetAdd(schema.JobGroupsKey(), jobGroupSetKey, CommandFlags.FireAndForget);
+//            redis.SetAdd(jobGroupSetKey, jobHashKey, CommandFlags.FireAndForget);
         }
 
         public async Task StoreTriggerAsync(ITrigger trigger, bool replaceExisting)
@@ -1079,7 +1090,7 @@
             return entries.ToStringDictionary();
         }
 
-        protected HashEntry[] ConvertToHashEntries(JobDataMap jobDataMap)
+        public HashEntry[] ConvertToHashEntries(JobDataMap jobDataMap)
         {
             if (jobDataMap == null)
             {
