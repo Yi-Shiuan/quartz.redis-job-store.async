@@ -8,7 +8,7 @@
     using System.IO;
     using System.Linq;
     using System.Text;
-    using System.Threading;
+
     using System.Threading.Tasks;
 
     using Common.Logging;
@@ -33,8 +33,6 @@
 
         private readonly IDatabase redis;
 
-        private readonly int redisLockTimeout;
-
         private readonly string schedulerInstanceId;
 
         private readonly ISchedulerSignaler schedulerSignaler;
@@ -43,27 +41,19 @@
 
         private readonly JsonSerializer serializer;
 
-        private readonly int triggerLockTimeout;
-
         private readonly DateTime unixEpoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-
-        private string lockValue;
 
         public RedisStorage(
             RedisKeySchema redisJobStoreSchema,
             IDatabase db,
             ISchedulerSignaler signaler,
             string schedulerInstanceId,
-            int triggerLockTimeout,
-            int redisLockTimeout,
             int misfireThreshold)
         {
             schema = redisJobStoreSchema;
             redis = db;
             schedulerSignaler = signaler;
             this.schedulerInstanceId = schedulerInstanceId;
-            this.triggerLockTimeout = triggerLockTimeout;
-            this.redisLockTimeout = redisLockTimeout;
             this.misfireThreshold = misfireThreshold;
             logger = LogManager.GetLogger<RedisStorage>();
             serializer = new JsonSerializer
@@ -105,7 +95,6 @@
             }
 
             return triggers;
-
         }
 
         public async Task<IReadOnlyCollection<string>> CalendarNamesAsync()
@@ -239,28 +228,22 @@
             return result;
         }
 
-        public async Task<IReadOnlyCollection<JobKey>> JobKeysAsync(GroupMatcher<JobKey> matcher)
+        public async Task<IReadOnlyCollection<JobKey>> GetJobKeysAsync(GroupMatcher<JobKey> matcher)
         {
-            var jobKeys = new List<JobKey>();
-
-            var jobGroupSets = redis.SetMembersAsync(schema.JobGroupsKey());
-
-            foreach (var item in await jobGroupSets)
+            var allJobs = redis.SetMembersAsync(schema.RedisJobGroupKey());
+            var result = new List<JobKey>();
+            
+            foreach (var item in await allJobs)
             {
-                if (!matcher.CompareWithOperator.Evaluate(schema.JobGroup(item), matcher.CompareToValue))
+                if (!item.IsNullOrEmpty && matcher.CompareWithOperator.Evaluate(item, matcher.CompareToValue))
                 {
-                    continue;
-                }
+                    var groupJobs = redis.SetMembersAsync(schema.RedisJobGroupKey(item));
 
-                var keys = redis.SetMembersAsync(item.ToString());
-
-                if (await keys != null)
-                {
-                    jobKeys.Add(schema.JobKey(item));
+                    result.AddRange((await groupJobs).Select(s => schema.ToJobKey(s)));
                 }
             }
 
-            return jobKeys;
+            return result;
         }
 
         public async Task<int> NumberOfCalendarsAsync()
@@ -1194,16 +1177,6 @@
             return string.IsNullOrEmpty(await lastReleaseTime) ? 0 : double.Parse(await lastReleaseTime);
         }
 
-        protected Task<bool> LockTriggerAsync(TriggerKey triggerKey)
-        {
-            return redis.StringSetAsync(schema.TriggerLockKey(triggerKey), schedulerInstanceId, TimeSpan.FromSeconds(triggerLockTimeout));
-        }
-
-        protected int RandomInt(int min, int max)
-        {
-            return new Random().Next(max - min + 1) + min;
-        }
-
         protected async Task ReleaseOrphanedTriggersAsync(TriggerState currentState, TriggerState newState)
         {
             var triggers = redis.SortedSetRangeByScoreWithScoresAsync(schema.TriggerStateKey(currentState), 0, -1);
@@ -1215,18 +1188,6 @@
                 {
                     await SetTriggerStateAsync(newState, sortedSetEntry.Score, sortedSetEntry.Element);
                 }
-            }
-        }
-
-        protected async Task ReleaseTriggersAsync()
-        {
-            var misfireTime = DateTimeOffset.UtcNow.DateTime.ToUnixTimeMillieSeconds();
-            if (misfireTime - await GetLastTriggersReleaseTimeAsync() > triggerLockTimeout)
-            {
-                await ReleaseOrphanedTriggersAsync(TriggerState.Acquired, TriggerState.Waiting);
-                await ReleaseOrphanedTriggersAsync(TriggerState.Blocked, TriggerState.Waiting);
-                await ReleaseOrphanedTriggersAsync(TriggerState.PausedBlocked, TriggerState.Paused);
-                await SetLastTriggerReleaseTimeAsync(DateTimeOffset.UtcNow.DateTime.ToUnixTimeMillieSeconds());
             }
         }
 

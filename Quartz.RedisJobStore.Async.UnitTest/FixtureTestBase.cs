@@ -15,9 +15,7 @@
     public class FixtureTestBase
     {
         protected readonly string Delimiter = ":";
-
-        protected readonly string Prefix = "UnitTest";
-
+        
         protected IDatabase redis;
 
         protected RedisKeySchema schema;
@@ -28,8 +26,8 @@
         public virtual void Setup()
         {
             redis = Substitute.For<IDatabase>();
-            schema = new RedisKeySchema(Delimiter, Prefix);
-            storage = Substitute.For<RedisStorage>(schema, redis, Substitute.For<ISchedulerSignaler>(), "UnitTestInstance", 1000, 1000, 60000);
+            schema = new RedisKeySchema(Delimiter);
+            storage = new RedisStorage(schema, redis, Substitute.For<ISchedulerSignaler>(), "UnitTest", 60000);
         }
     }
 }

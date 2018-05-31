@@ -39,22 +39,16 @@
 
         public string KeyDelimiter { get; set; }
 
-        public string KeyPrefix { get; set; }
-
         public int? MisfireThreshold { get; set; }
 
         public Task<ConnectionMultiplexer> Multiplexer { get; set; }
 
         public string RedisConfiguration { get; set; }
-
-        public int? RedisLockTimeout { get; set; }
-
+        
         public bool SupportsPersistence => true;
 
         public int ThreadPoolSize { get; set; }
-
-        public int? TriggerLockTimeout { get; set; }
-
+        
         public Task<IReadOnlyCollection<IOperableTrigger>> AcquireNextTriggers(
             DateTimeOffset noLaterThan,
             int maxCount,
@@ -98,7 +92,7 @@
             GroupMatcher<JobKey> matcher,
             CancellationToken cancellationToken = new CancellationToken())
         {
-            return DoWithLock(storage.JobKeysAsync(matcher), "Error on getting job keys");
+            return DoWithLock(storage.GetJobKeysAsync(matcher), "Error on getting job keys");
         }
 
         public Task<int> GetNumberOfCalendars(CancellationToken cancellationToken = new CancellationToken())
@@ -151,17 +145,13 @@
             CancellationToken cancellationToken = new CancellationToken())
         {
             var sw = Stopwatch.StartNew();
-            var schema = new RedisKeySchema(
-                string.IsNullOrEmpty(KeyDelimiter) ? ":" : KeyDelimiter,
-                string.IsNullOrEmpty(KeyPrefix) ? string.Empty : KeyPrefix);
+            var schema = new RedisKeySchema(string.IsNullOrEmpty(KeyDelimiter) ? ":" : KeyDelimiter);
             Multiplexer = ConnectionMultiplexer.ConnectAsync(RedisConfiguration);
             storage = new RedisStorage(
                 schema,
                 (await Multiplexer).GetDatabase(),
                 signaler,
                 InstanceId,
-                TriggerLockTimeout ?? 300000,
-                RedisLockTimeout ?? 5000,
                 MisfireThreshold ?? 60000);
 
             logger.Debug($"Initialize Done - Elapsed{sw.Elapsed:g}");

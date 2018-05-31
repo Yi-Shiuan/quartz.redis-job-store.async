@@ -33,7 +33,4 @@
   <ItemGroup>
     <PackageReference Update="Microsoft.NETCore.App" Version="2.0.5" />
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="JobTests\" />
-  </ItemGroup>
 </Project>
