@@ -715,30 +715,20 @@
         public async Task StoreJobAsync(IJobDetail job, bool replaceExisting)
         {
             var redisJobGroupKey = schema.RedisJobGroupKey(job.Key);
+            var redisJobKey = schema.RedisJobKey(job.Key);
+
+            if (await redis.KeyExistsAsync(redisJobKey) && !replaceExisting)
+            {
+                throw new ObjectAlreadyExistsException(job);
+            }
+        
             var jobStoreKey = schema.JobStoreKey(job.Key);
-            
+
             redis.SetAdd(redisJobGroupKey, jobStoreKey, CommandFlags.FireAndForget);
             redis.SetAdd(schema.RedisJobKey(), jobStoreKey, CommandFlags.FireAndForget);
             redis.SetAdd(schema.RedisJobGroupKey(), redisJobGroupKey, CommandFlags.FireAndForget);
-            redis.HashSet(schema.RedisJobDataMap(job.Key), job.JobDataMap.ToDataMapEntity(),
-                CommandFlags.FireAndForget);
-            redis.HashSet(schema.RedisJobKey(job.Key), job.ToJobEntity(), CommandFlags.FireAndForget);
-
-
-//            var redisJobKey = schema.RedisJobKey(jobDetail.Key);
-//            var jobDataMapHashKey = schema.JobDataMapHashKey(jobDetail.Key);
-//            var jobGroupSetKey = schema.JobGroupKey(jobDetail.Key.Group);
-//
-//            if (await redis.KeyExistsAsync(redisJobKey) && !replaceExisting)
-//            {
-//                throw new ObjectAlreadyExistsException(jobDetail);
-//            }
-//
-//            redis.HashSet(redisJobKey, ConvertToHashEntries(jobDetail), CommandFlags.FireAndForget);
-//            redis.HashSet(jobDataMapHashKey, ConvertToHashEntries(jobDetail.JobDataMap), CommandFlags.FireAndForget);
-//            redis.SetAdd(schema.JobsKey(), jobHashKey, CommandFlags.FireAndForget);
-//            redis.SetAdd(schema.JobGroupsKey(), jobGroupSetKey, CommandFlags.FireAndForget);
-//            redis.SetAdd(jobGroupSetKey, jobHashKey, CommandFlags.FireAndForget);
+            redis.HashSet(schema.RedisJobDataMap(job.Key), job.JobDataMap.ToDataMapEntity(), CommandFlags.FireAndForget);
+            redis.HashSet(redisJobKey, job.ToJobEntity(), CommandFlags.FireAndForget);
         }
 
         public async Task StoreTriggerAsync(ITrigger trigger, bool replaceExisting)

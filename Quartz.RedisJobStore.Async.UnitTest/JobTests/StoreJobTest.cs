@@ -69,5 +69,16 @@ namespace Quartz.RedisJobStore.Async.UnitTest.JobTests
             redis.Received().HashSet(schema.RedisJobKey(job.Key), Arg.Any<HashEntry[]>(),
                 CommandFlags.FireAndForget);
         }
+        
+        [Test]
+        public async Task StoreDuplicateJobShouldBeStoreToJobKey()
+        {
+            var job = JobBuilder.Create<TestJob>().Build();
+            redis.KeyExistsAsync(schema.RedisJobKey(job.Key)).Returns(true);
+            
+            var result = storage.StoreJobAsync(job, false);
+
+            Assert.ThrowsAsync<ObjectAlreadyExistsException>(async () => await result);
+        }
     }
 }
