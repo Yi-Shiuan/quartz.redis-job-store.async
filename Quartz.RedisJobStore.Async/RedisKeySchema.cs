@@ -8,6 +8,8 @@
 
     using StackExchange.Redis;
 
+    using TriggerState = Quartz.TriggerState;
+
     #endregion
 
     public class RedisKeySchema
@@ -60,105 +62,26 @@
             return $"Job_DataMap{delimiter}{jobKey.Group}{delimiter}{jobKey.Name}";
         }
         
+        public string TriggerStoreKey(TriggerKey key)
+        {
+            return $"{key.Group}{delimiter}{key.Name}";
+        }
+
+        public string RedisTriggerGroupKey(TriggerKey key)
+        {
+            return $"Trigger{delimiter}{key.Group}";
+        }
+
+        public string RedisTriggerGroupKey()
+        {
+            return "Trigger_Groups";
+        }
+
+        public string RedisTriggerKey()
+        {
+            return "Triggers";
+        }
         
-        
-        
-        
-        
-        
-        
-
-        public string BlockedJobs()
-        {
-            return "Blocked_Jobs";
-        }
-
-        public string BlockedJobsSet()
-        {
-            return "Blocked_Jobs";
-        }
-
-        public string CalendarHashKey(string name)
-        {
-            return $"Calendar{delimiter}{name}";
-        }
-
-        public string CalendarsKey()
-        {
-            return "Calendars";
-        }
-
-        public string CalendarTriggersKey(string key)
-        {
-            return $"Calendar_Triggers{delimiter}{key}";
-        }
-
-        public string GetCalendarName(string name)
-        {
-            return Split(name)[1];
-        }
-
-        public string JobBlockedKey(JobKey key)
-        {
-            return $"Job_blocked{delimiter}{key.Group}{delimiter}{key.Name}";
-        }
-
-        public string JobDataMapHashKey(JobKey key)
-        {
-            return $"Job_Data_Map{delimiter}{key.Group}{delimiter}{key.Name}";
-        }
-
-        public string JobGroup(string name)
-        {
-            return Split(name)[1];
-        }
-
-        public string JobGroupKey(string name)
-        {
-            return $"Job_Group{delimiter}{name}";
-        }
-
-        public string JobGroupsKey()
-        {
-            return "Job_Groups";
-        }
-
-        public string JobHashKey(JobKey key)
-        {
-            return $"Jobs{delimiter}{key.Group}{delimiter}{key.Name}";
-        }
-
-        public JobKey JobKey(string key)
-        {
-            var hashParts = Split(key);
-            return new JobKey(hashParts[2], hashParts[1]);
-        }
-
-        public string JobsKey()
-        {
-            return "Jobs";
-        }
-
-        public string JobTriggersKey(JobKey key)
-        {
-            return $"Job_Triggers{delimiter}{key.Group}{delimiter}{key.Name}";
-        }
-
-        public string LastTriggerReleaseTime()
-        {
-            return "last_triggers_release_time";
-        }
-
-        public string PausedJobGroupsKey()
-        {
-            return "Paused_Job_Groups";
-        }
-
-        public string PausedTriggerGroupsKey()
-        {
-            return "Paused_Trigger_Groups";
-        }
-
         public string[] Split(string input)
         {
             return input.Split(
@@ -169,45 +92,24 @@
                              StringSplitOptions.None);
         }
 
-        public string TriggerGroup(string group)
-        {
-            return Split(group)[1];
-        }
-
-        public string TriggerGroupSetKey(string group)
-        {
-            return $"Trigger_Group{delimiter}{group}";
-        }
-
-        public string TriggerGroupsKey()
-        {
-            return "Trigger_Groups";
-        }
-
-        public string TriggerHashKey(TriggerKey key)
+        public string RedisTriggerKey(TriggerKey key)
         {
             return $"Trigger{delimiter}{key.Group}{delimiter}{key.Name}";
         }
 
-        public TriggerKey TriggerKey(string key)
+        public string RedisTriggerJobKey(JobKey key)
         {
-            var hashParts = Split(key);
-            return new TriggerKey(hashParts[2], hashParts[1]);
+            return $"Job_Triggers{delimiter}{key.Group}{delimiter}{key.Name}";
         }
 
-        public string TriggerLockKey(TriggerKey key)
+        public string RedisCalendarKey(string calendarName)
         {
-            return $"Trigger_Lock{delimiter}{key.Group}{delimiter}{key.Name}";
+            return $"Calendar{delimiter}{calendarName}";
         }
 
-        public string TriggersKey()
+        public string RedisTriggerStateKey(TriggerRedisState state)
         {
-            return "Triggers";
-        }
-
-        public string TriggerStateKey(TriggerState state)
-        {
-            return $"{state.ToString()}_Triggers";
+            return $"Trigger_State{delimiter}{state}";
         }
     }
 }

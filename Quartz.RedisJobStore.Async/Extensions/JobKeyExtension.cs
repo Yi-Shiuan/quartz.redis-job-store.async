@@ -1,8 +1,13 @@
-﻿using Quartz.RedisJobStore.Async.Enums;
-using StackExchange.Redis;
-
-namespace Quartz.RedisJobStore.Async
+﻿namespace Quartz.RedisJobStore.Async.Extensions
 {
+    #region
+
+    using Quartz.RedisJobStore.Async.Enums;
+
+    using StackExchange.Redis;
+
+    #endregion
+
     public static class JobKeyExtension
     {
         public static HashEntry[] ToDataMapEntity(this JobDataMap jobDataMap)
@@ -21,18 +26,18 @@ namespace Quartz.RedisJobStore.Async
 
             return entries;
         }
-        
-        public static HashEntry[] ToJobEntity(this IJobDetail jobDetail)
+
+        public static HashEntry[] ToJobStoreEntries(this IJobDetail jobDetail)
         {
             return new[]
-            {
-                new HashEntry(JobStoreKey.JobClass, jobDetail.JobType.AssemblyQualifiedName),
-                new HashEntry(JobStoreKey.Description, jobDetail.Description ?? string.Empty),
-                new HashEntry(JobStoreKey.IsDurable, jobDetail.Durable),
-                new HashEntry(JobStoreKey.RequestRecovery, jobDetail.RequestsRecovery),
-                new HashEntry(JobStoreKey.BlockedBy, string.Empty),
-                new HashEntry(JobStoreKey.BlockTime, string.Empty)
-            };
+                       {
+                           new HashEntry(JobStoreKey.JobClass, jobDetail.JobType.AssemblyQualifiedName),
+                           new HashEntry(JobStoreKey.Description, jobDetail.Description ?? string.Empty),
+                           new HashEntry(JobStoreKey.IsDurable, jobDetail.Durable),
+                           new HashEntry(JobStoreKey.RequestRecovery, jobDetail.RequestsRecovery),
+                           new HashEntry(JobStoreKey.BlockedBy, string.Empty),
+                           new HashEntry(JobStoreKey.BlockTime, string.Empty)
+                       };
         }
     }
 }

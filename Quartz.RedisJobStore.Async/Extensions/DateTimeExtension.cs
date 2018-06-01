@@ -1,4 +1,4 @@
-﻿namespace Quartz.RedisJobStore.Async
+﻿namespace Quartz.RedisJobStore.Async.Extensions
 {
     using System;
 
