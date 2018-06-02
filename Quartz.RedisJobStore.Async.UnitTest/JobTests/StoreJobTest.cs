@@ -42,7 +42,7 @@ namespace Quartz.RedisJobStore.Async.UnitTest.JobTests
 
             await result;
 
-            redis.Received().SetAdd(schema.RedisJobGroupKey(), schema.RedisJobGroupKey(job.Key),
+            redis.Received().SetAdd(schema.RedisJobGroupKey(), schema.JobGroupStoreKey(job.Key),
                 CommandFlags.FireAndForget);
         }
         

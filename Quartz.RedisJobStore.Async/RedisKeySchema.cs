@@ -1,17 +1,9 @@
-﻿namespace Quartz.RedisJobStore.Async
+﻿using System;
+using Quartz.RedisJobStore.Async.Enums;
+using StackExchange.Redis;
+
+namespace Quartz.RedisJobStore.Async
 {
-    #region
-
-    using System;
-
-    using Quartz.RedisJobStore.Async.Enums;
-
-    using StackExchange.Redis;
-
-    using TriggerState = Quartz.TriggerState;
-
-    #endregion
-
     public class RedisKeySchema
     {
         private readonly string delimiter;
@@ -51,7 +43,7 @@
         {
             return "Jobs";
         }
-        
+
         public string JobStoreKey(JobKey key)
         {
             return $"{key.Group}{delimiter}{key.Name}";
@@ -61,7 +53,7 @@
         {
             return $"Job_DataMap{delimiter}{jobKey.Group}{delimiter}{jobKey.Name}";
         }
-        
+
         public string TriggerStoreKey(TriggerKey key)
         {
             return $"{key.Group}{delimiter}{key.Name}";
@@ -69,7 +61,12 @@
 
         public string RedisTriggerGroupKey(TriggerKey key)
         {
-            return $"Trigger{delimiter}{key.Group}";
+            return $"Trigger_Groups{delimiter}{key.Group}";
+        }
+
+        public string RedisTriggerGroupKey(string key)
+        {
+            return $"Trigger_Groups{delimiter}{key}";
         }
 
         public string RedisTriggerGroupKey()
@@ -81,15 +78,15 @@
         {
             return "Triggers";
         }
-        
+
         public string[] Split(string input)
         {
             return input.Split(
-                             new[]
-                                 {
-                                     delimiter
-                                 },
-                             StringSplitOptions.None);
+                new[]
+                {
+                    delimiter
+                },
+                StringSplitOptions.None);
         }
 
         public string RedisTriggerKey(TriggerKey key)
@@ -110,6 +107,22 @@
         public string RedisTriggerStateKey(TriggerRedisState state)
         {
             return $"Trigger_State{delimiter}{state}";
+        }
+
+        public TriggerKey ToTriggerKey(string key)
+        {
+            var t = Split(key);
+            return new TriggerKey(t[1], t[0]);
+        }
+
+        public string JobGroupStoreKey(JobKey key)
+        {
+            return key.Group;
+        }
+
+        public string TriggerGroupStoreKey(TriggerKey key)
+        {
+            return key.Group;
         }
     }
 }

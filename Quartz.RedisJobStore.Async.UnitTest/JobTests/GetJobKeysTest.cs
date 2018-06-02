@@ -20,6 +20,16 @@
     public class GetJobKeysTest : FixtureTestBase
     {
         [Test]
+        public async Task GetAnyJobKeysKeyIsEmpty()
+        {
+            redis.SetMembersAsync(schema.RedisJobGroupKey()).Returns(new RedisValue[0]);
+
+            var result = storage.GetJobKeysAsync(GroupMatcher<JobKey>.AnyGroup());
+
+            (await result).Should().HaveCount(0);
+        }
+
+        [Test]
         public async Task GetAnyJobKeysKeyHaveOneResult()
         {
             ReturnRedisJobGroup("UnitTest");
@@ -28,16 +38,6 @@
             var result = storage.GetJobKeysAsync(GroupMatcher<JobKey>.AnyGroup());
 
             (await result).Should().HaveCount(1);
-        }
-
-        [Test]
-        public async Task GetAnyJobKeysKeyIsEmpty()
-        {
-            redis.SetMembersAsync(schema.RedisJobGroupKey()).Returns(new RedisValue[0]);
-
-            var result = storage.GetJobKeysAsync(GroupMatcher<JobKey>.AnyGroup());
-
-            (await result).Should().HaveCount(0);
         }
 
         [Test]

@@ -124,7 +124,7 @@
             GroupMatcher<TriggerKey> matcher,
             CancellationToken cancellationToken = new CancellationToken())
         {
-            return DoWithLock(storage.TriggerKeysAsync(matcher), "Error on getting trigger keys");
+            return DoWithLock(storage.GetTriggerKeysAsync(matcher), "Error on getting trigger keys");
         }
 
         public Task<IReadOnlyCollection<IOperableTrigger>> GetTriggersForJob(

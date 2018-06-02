@@ -1,23 +1,19 @@
-﻿namespace Quartz.RedisJobStore.Async
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Common.Logging;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
+using Quartz.Impl.Matchers;
+using Quartz.RedisJobStore.Async.Enums;
+using Quartz.RedisJobStore.Async.Extensions;
+using Quartz.Spi;
+using StackExchange.Redis;
+
+namespace Quartz.RedisJobStore.Async
 {
     #region
-
-    using System;
-    using System.Collections.Generic;
-    using System.Linq;
-    using System.Threading.Tasks;
-
-    using Common.Logging;
-
-    using Newtonsoft.Json;
-    using Newtonsoft.Json.Serialization;
-
-    using Quartz.Impl.Matchers;
-    using Quartz.RedisJobStore.Async.Enums;
-    using Quartz.RedisJobStore.Async.Extensions;
-    using Quartz.Spi;
-
-    using StackExchange.Redis;
 
     #endregion
 
@@ -48,12 +44,12 @@
             this.misfireThreshold = misfireThreshold;
             logger = LogManager.GetLogger<RedisStorage>();
             serializer = new JsonSerializer
-                             {
-                                 TypeNameHandling = TypeNameHandling.All,
-                                 DateTimeZoneHandling = DateTimeZoneHandling.Utc,
-                                 NullValueHandling = NullValueHandling.Ignore,
-                                 ContractResolver = new CamelCasePropertyNamesContractResolver()
-                             };
+            {
+                TypeNameHandling = TypeNameHandling.All,
+                DateTimeZoneHandling = DateTimeZoneHandling.Utc,
+                NullValueHandling = NullValueHandling.Ignore,
+                ContractResolver = new CamelCasePropertyNamesContractResolver()
+            };
         }
 
         public async Task<IReadOnlyCollection<IOperableTrigger>> AcquireNextTriggersAsync(DateTimeOffset noLaterThan, int maxCount, TimeSpan timeWindow)
@@ -271,7 +267,6 @@
 
         public async Task StoreJobAsync(IJobDetail job, bool replaceExisting)
         {
-            var redisJobGroupKey = schema.RedisJobGroupKey(job.Key);
             var redisJobKey = schema.RedisJobKey(job.Key);
 
             if (await redis.KeyExistsAsync(redisJobKey) && !replaceExisting)
@@ -281,9 +276,9 @@
 
             var jobStoreKey = schema.JobStoreKey(job.Key);
 
-            redis.SetAdd(redisJobGroupKey, jobStoreKey, CommandFlags.FireAndForget);
+            redis.SetAdd(schema.RedisJobGroupKey(job.Key), jobStoreKey, CommandFlags.FireAndForget);
             redis.SetAdd(schema.RedisJobKey(), jobStoreKey, CommandFlags.FireAndForget);
-            redis.SetAdd(schema.RedisJobGroupKey(), redisJobGroupKey, CommandFlags.FireAndForget);
+            redis.SetAdd(schema.RedisJobGroupKey(), schema.JobGroupStoreKey(job.Key), CommandFlags.FireAndForget);
             redis.HashSet(schema.RedisJobDataMap(job.Key), job.JobDataMap.ToDataMapEntity(), CommandFlags.FireAndForget);
             redis.HashSet(redisJobKey, job.ToJobStoreEntries(), CommandFlags.FireAndForget);
         }
@@ -296,7 +291,6 @@
             }
 
             var redisTriggerKey = schema.RedisTriggerKey(trigger.Key);
-
             var isTriggerExisted = redis.KeyExistsAsync(redisTriggerKey);
             if (!replaceExisting && await isTriggerExisted)
             {
@@ -334,9 +328,22 @@
             throw new NotImplementedException();
         }
 
-        public async Task<IReadOnlyCollection<TriggerKey>> TriggerKeysAsync(GroupMatcher<TriggerKey> matcher)
+        public async Task<IReadOnlyCollection<TriggerKey>> GetTriggerKeysAsync(GroupMatcher<TriggerKey> matcher)
         {
-            throw new NotImplementedException();
+            var triggerGroups = redis.SetMembersAsync(schema.RedisTriggerGroupKey());
+            var result = new List<TriggerKey>();
+
+            foreach (var item in await triggerGroups)
+            {
+                if (!item.IsNullOrEmpty && matcher.CompareWithOperator.Evaluate(item, matcher.CompareToValue))
+                {
+                    var groupJobs = redis.SetMembersAsync(schema.RedisTriggerGroupKey(item));
+
+                    result.AddRange((await groupJobs).Select(s => schema.ToTriggerKey(s)));
+                }
+            }
+
+            return result;
         }
 
         public async Task<IReadOnlyCollection<TriggerFiredResult>> TriggersFiredAsync(IEnumerable<IOperableTrigger> triggers)
