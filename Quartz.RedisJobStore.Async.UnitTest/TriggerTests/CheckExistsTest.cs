@@ -1,4 +1,4 @@
-﻿namespace Quartz.RedisJobStore.Async.UnitTest.JobTests
+﻿namespace Quartz.RedisJobStore.Async.UnitTest.TriggerTests
 {
     #region
 
@@ -18,7 +18,7 @@
         [Test]
         public async Task CheckExistsShouldBeFalse()
         {
-            var key = InitTest(false);
+            var key = InitTriggerKey(false);
             var result = storage.CheckExistsAsync(key);
 
             (await result).Should().Be(false);
@@ -27,16 +27,16 @@
         [Test]
         public async Task CheckExistsShouldBeTrue()
         {
-            var key = InitTest(true);
+            var key = InitTriggerKey(true);
             var result = storage.CheckExistsAsync(key);
 
             (await result).Should().Be(true);
         }
 
-        private JobKey InitTest(bool value)
+        private TriggerKey InitTriggerKey(bool value)
         {
-            var key = new JobKey("Test", "Unit");
-            redis.KeyExistsAsync(schema.RedisJobKey(key)).Returns(value);
+            var key = new TriggerKey("Test", "Unit");
+            redis.KeyExistsAsync(schema.RedisTriggerKey(key)).Returns(value);
             return key;
         }
     }

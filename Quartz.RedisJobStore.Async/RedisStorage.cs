@@ -100,12 +100,12 @@
 
         public Task<bool> CheckExistsAsync(string calName)
         {
-            throw new NotImplementedException();
+            return redis.KeyExistsAsync(schema.RedisCalendarKey(calName));
         }
 
         public Task<bool> CheckExistsAsync(TriggerKey key)
         {
-            throw new NotImplementedException();
+            return redis.KeyExistsAsync(schema.RedisTriggerKey(key));
         }
 
         public Task ClearAllSchedulingDataAsync()
