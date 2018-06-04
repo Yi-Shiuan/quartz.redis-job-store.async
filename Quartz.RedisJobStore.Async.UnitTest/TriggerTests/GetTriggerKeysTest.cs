@@ -93,8 +93,6 @@ namespace Quartz.RedisJobStore.Async.UnitTest.TriggerTests
             (await result).Should().HaveCount(2);
         }
         
-        
-        
         private void ReturnTriggerGroup(params RedisValue[] values)
         {
             redis.SetMembersAsync(schema.RedisTriggerGroupKey()).Returns(values);

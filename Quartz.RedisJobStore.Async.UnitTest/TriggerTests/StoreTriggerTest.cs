@@ -59,7 +59,7 @@
 
             await result;
 
-            redis.Received().SetAdd(schema.RedisTriggerGroupKey(), schema.RedisTriggerGroupKey(trigger.Key), CommandFlags.FireAndForget);
+            redis.Received().SetAdd(schema.RedisTriggerGroupKey(), schema.TriggerGroupStoreKey(trigger.Key), CommandFlags.FireAndForget);
         }
 
         [Test]

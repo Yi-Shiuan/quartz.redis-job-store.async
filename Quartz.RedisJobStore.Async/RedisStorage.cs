@@ -279,8 +279,8 @@ namespace Quartz.RedisJobStore.Async
             redis.SetAdd(schema.RedisJobGroupKey(job.Key), jobStoreKey, CommandFlags.FireAndForget);
             redis.SetAdd(schema.RedisJobKey(), jobStoreKey, CommandFlags.FireAndForget);
             redis.SetAdd(schema.RedisJobGroupKey(), schema.JobGroupStoreKey(job.Key), CommandFlags.FireAndForget);
-            redis.HashSet(schema.RedisJobDataMap(job.Key), job.JobDataMap.ToDataMapEntity(), CommandFlags.FireAndForget);
-            redis.HashSet(redisJobKey, job.ToJobStoreEntries(), CommandFlags.FireAndForget);
+            redis.HashSet(schema.RedisJobDataMap(job.Key), job.JobDataMap.ToStoreEntity(), CommandFlags.FireAndForget);
+            redis.HashSet(redisJobKey, job.ToStoreEntries(), CommandFlags.FireAndForget);
         }
 
         public async Task StoreTriggerAsync(ITrigger trigger, bool replaceExisting)
@@ -300,8 +300,8 @@ namespace Quartz.RedisJobStore.Async
             var triggerStoreKey = schema.TriggerStoreKey(trigger.Key);
             redis.SetAdd(schema.RedisTriggerGroupKey(trigger.Key), triggerStoreKey, CommandFlags.FireAndForget);
             redis.SetAdd(schema.RedisTriggerKey(), triggerStoreKey, CommandFlags.FireAndForget);
-            redis.SetAdd(schema.RedisTriggerGroupKey(), schema.RedisTriggerGroupKey(trigger.Key), CommandFlags.FireAndForget);
-            redis.HashSet(redisTriggerKey, trigger.ToTriggerStoreEntries(schema.JobStoreKey(trigger.JobKey)), CommandFlags.FireAndForget);
+            redis.SetAdd(schema.RedisTriggerGroupKey(), schema.TriggerGroupStoreKey(trigger.Key), CommandFlags.FireAndForget);
+            redis.HashSet(redisTriggerKey, trigger.ToStoreEntries(schema.JobStoreKey(trigger.JobKey)), CommandFlags.FireAndForget);
             redis.SetAdd(schema.RedisTriggerJobKey(trigger.JobKey), triggerStoreKey, CommandFlags.FireAndForget);
 
             if (!string.IsNullOrEmpty(trigger.CalendarName))

@@ -1,9 +1,13 @@
-﻿using System;
-using Quartz.RedisJobStore.Async.Enums;
-using StackExchange.Redis;
-
-namespace Quartz.RedisJobStore.Async
+﻿namespace Quartz.RedisJobStore.Async
 {
+    #region
+
+    using System;
+
+    using Quartz.RedisJobStore.Async.Enums;
+
+    #endregion
+
     public class RedisKeySchema
     {
         private readonly string delimiter;
@@ -11,6 +15,26 @@ namespace Quartz.RedisJobStore.Async
         public RedisKeySchema(string delimiter)
         {
             this.delimiter = delimiter;
+        }
+
+        public string JobGroupStoreKey(JobKey key)
+        {
+            return key.Group;
+        }
+
+        public string JobStoreKey(JobKey key)
+        {
+            return $"{key.Group}{delimiter}{key.Name}";
+        }
+
+        public string RedisCalendarKey(string calendarName)
+        {
+            return $"Calendar{delimiter}{calendarName}";
+        }
+
+        public string RedisJobDataMap(JobKey jobKey)
+        {
+            return $"Job_DataMap{delimiter}{jobKey.Group}{delimiter}{jobKey.Name}";
         }
 
         public string RedisJobGroupKey()
@@ -33,30 +57,9 @@ namespace Quartz.RedisJobStore.Async
             return $"Job{delimiter}{key.Group}{delimiter}{key.Name}";
         }
 
-        public JobKey ToJobKey(string key)
-        {
-            var t = Split(key);
-            return new JobKey(t[1], t[0]);
-        }
-
         public string RedisJobKey()
         {
             return "Jobs";
-        }
-
-        public string JobStoreKey(JobKey key)
-        {
-            return $"{key.Group}{delimiter}{key.Name}";
-        }
-
-        public string RedisJobDataMap(JobKey jobKey)
-        {
-            return $"Job_DataMap{delimiter}{jobKey.Group}{delimiter}{jobKey.Name}";
-        }
-
-        public string TriggerStoreKey(TriggerKey key)
-        {
-            return $"{key.Group}{delimiter}{key.Name}";
         }
 
         public string RedisTriggerGroupKey(TriggerKey key)
@@ -74,19 +77,14 @@ namespace Quartz.RedisJobStore.Async
             return "Trigger_Groups";
         }
 
+        public string RedisTriggerJobKey(JobKey key)
+        {
+            return $"Job_Triggers{delimiter}{key.Group}{delimiter}{key.Name}";
+        }
+
         public string RedisTriggerKey()
         {
             return "Triggers";
-        }
-
-        public string[] Split(string input)
-        {
-            return input.Split(
-                new[]
-                {
-                    delimiter
-                },
-                StringSplitOptions.None);
         }
 
         public string RedisTriggerKey(TriggerKey key)
@@ -94,19 +92,25 @@ namespace Quartz.RedisJobStore.Async
             return $"Trigger{delimiter}{key.Group}{delimiter}{key.Name}";
         }
 
-        public string RedisTriggerJobKey(JobKey key)
-        {
-            return $"Job_Triggers{delimiter}{key.Group}{delimiter}{key.Name}";
-        }
-
-        public string RedisCalendarKey(string calendarName)
-        {
-            return $"Calendar{delimiter}{calendarName}";
-        }
-
         public string RedisTriggerStateKey(TriggerRedisState state)
         {
             return $"Trigger_State{delimiter}{state}";
+        }
+
+        public string[] Split(string input)
+        {
+            return input.Split(
+                new[]
+                    {
+                        delimiter
+                    },
+                StringSplitOptions.None);
+        }
+
+        public JobKey ToJobKey(string key)
+        {
+            var t = Split(key);
+            return new JobKey(t[1], t[0]);
         }
 
         public TriggerKey ToTriggerKey(string key)
@@ -115,14 +119,14 @@ namespace Quartz.RedisJobStore.Async
             return new TriggerKey(t[1], t[0]);
         }
 
-        public string JobGroupStoreKey(JobKey key)
+        public string TriggerGroupStoreKey(TriggerKey key)
         {
             return key.Group;
         }
 
-        public string TriggerGroupStoreKey(TriggerKey key)
+        public string TriggerStoreKey(TriggerKey key)
         {
-            return key.Group;
+            return $"{key.Group}{delimiter}{key.Name}";
         }
     }
 }

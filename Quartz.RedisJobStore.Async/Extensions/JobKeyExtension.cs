@@ -10,7 +10,7 @@
 
     public static class JobKeyExtension
     {
-        public static HashEntry[] ToDataMapEntity(this JobDataMap jobDataMap)
+        public static HashEntry[] ToStoreEntity(this JobDataMap jobDataMap)
         {
             if (jobDataMap == null)
             {
@@ -27,14 +27,14 @@
             return entries;
         }
 
-        public static HashEntry[] ToJobStoreEntries(this IJobDetail jobDetail)
+        public static HashEntry[] ToStoreEntries(this IJobDetail detail)
         {
             return new[]
                        {
-                           new HashEntry(JobStoreKey.JobClass, jobDetail.JobType.AssemblyQualifiedName),
-                           new HashEntry(JobStoreKey.Description, jobDetail.Description ?? string.Empty),
-                           new HashEntry(JobStoreKey.IsDurable, jobDetail.Durable),
-                           new HashEntry(JobStoreKey.RequestRecovery, jobDetail.RequestsRecovery),
+                           new HashEntry(JobStoreKey.JobClass, detail.JobType.AssemblyQualifiedName),
+                           new HashEntry(JobStoreKey.Description, detail.Description ?? string.Empty),
+                           new HashEntry(JobStoreKey.IsDurable, detail.Durable),
+                           new HashEntry(JobStoreKey.RequestRecovery, detail.RequestsRecovery),
                            new HashEntry(JobStoreKey.BlockedBy, string.Empty),
                            new HashEntry(JobStoreKey.BlockTime, string.Empty)
                        };

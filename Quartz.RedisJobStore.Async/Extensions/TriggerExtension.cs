@@ -15,7 +15,7 @@
 
     public static class TriggerExtension
     {
-        public static HashEntry[] ToTriggerStoreEntries(this ITrigger trigger, string jobKey)
+        public static HashEntry[] ToStoreEntries(this ITrigger trigger, string jobKey)
         {
             var operable = (IOperableTrigger)trigger;
             if (operable == null)
