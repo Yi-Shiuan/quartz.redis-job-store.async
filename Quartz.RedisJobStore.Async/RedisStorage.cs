@@ -1,18 +1,26 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Common.Logging;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Serialization;
-using Quartz.Impl.Matchers;
-using Quartz.RedisJobStore.Async.Enums;
-using Quartz.RedisJobStore.Async.Extensions;
-using Quartz.Spi;
-using StackExchange.Redis;
-
-namespace Quartz.RedisJobStore.Async
+﻿namespace Quartz.RedisJobStore.Async
 {
+    #region
+
+    using System;
+    using System.Collections.Generic;
+    using System.Linq;
+    using System.Threading.Tasks;
+
+    using Common.Logging;
+
+    using Newtonsoft.Json;
+    using Newtonsoft.Json.Serialization;
+
+    using Quartz.Impl.Matchers;
+    using Quartz.RedisJobStore.Async.Enums;
+    using Quartz.RedisJobStore.Async.Extensions;
+    using Quartz.Spi;
+
+    using StackExchange.Redis;
+
+    #endregion
+
     #region
 
     #endregion
@@ -25,34 +33,32 @@ namespace Quartz.RedisJobStore.Async
 
         private readonly IDatabase redis;
 
-        private readonly string schedulerInstanceId;
+        private readonly string instanceId;
 
-        private readonly ISchedulerSignaler schedulerSignaler;
+        private readonly ISchedulerSignaler signaler;
 
         private readonly RedisKeySchema schema;
 
         private readonly JsonSerializer serializer;
 
-        private readonly DateTime unixEpoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-
-        public RedisStorage(RedisKeySchema redisJobStoreSchema, IDatabase db, ISchedulerSignaler signaler, string schedulerInstanceId, int misfireThreshold)
+        public RedisStorage(RedisKeySchema redisJobStoreSchema, IDatabase db, ISchedulerSignaler signaler, string instanceId, int misfireThreshold)
         {
             schema = redisJobStoreSchema;
             redis = db;
-            schedulerSignaler = signaler;
-            this.schedulerInstanceId = schedulerInstanceId;
+            this.signaler = signaler;
+            this.instanceId = instanceId;
             this.misfireThreshold = misfireThreshold;
             logger = LogManager.GetLogger<RedisStorage>();
             serializer = new JsonSerializer
-            {
-                TypeNameHandling = TypeNameHandling.All,
-                DateTimeZoneHandling = DateTimeZoneHandling.Utc,
-                NullValueHandling = NullValueHandling.Ignore,
-                ContractResolver = new CamelCasePropertyNamesContractResolver()
-            };
+                             {
+                                 TypeNameHandling = TypeNameHandling.All,
+                                 DateTimeZoneHandling = DateTimeZoneHandling.Utc,
+                                 NullValueHandling = NullValueHandling.Ignore,
+                                 ContractResolver = new CamelCasePropertyNamesContractResolver()
+                             };
         }
 
-        public async Task<IReadOnlyCollection<IOperableTrigger>> AcquireNextTriggersAsync(DateTimeOffset noLaterThan, int maxCount, TimeSpan timeWindow)
+        public Task<IReadOnlyCollection<IOperableTrigger>> AcquireNextTriggersAsync(DateTimeOffset noLaterThan, int maxCount, TimeSpan timeWindow)
         {
             throw new NotImplementedException();
             //var score = ToUnixTimeMilliseconds(noLaterThan.Add(timeWindow));
@@ -82,14 +88,14 @@ namespace Quartz.RedisJobStore.Async
             //return triggers;
         }
 
-        public async Task<IReadOnlyCollection<string>> CalendarNamesAsync()
+        public Task<IReadOnlyCollection<string>> CalendarNamesAsync()
         {
             throw new NotImplementedException();
         }
 
-        public Task<bool> CheckExistsAsync(JobKey jobKey)
+        public Task<bool> CheckExistsAsync(JobKey key)
         {
-            throw new NotImplementedException();
+            return redis.KeyExistsAsync(schema.RedisJobKey(key));
         }
 
         public Task<bool> CheckExistsAsync(string calName)
@@ -97,12 +103,12 @@ namespace Quartz.RedisJobStore.Async
             throw new NotImplementedException();
         }
 
-        public Task<bool> CheckExistsAsync(TriggerKey triggerKey)
+        public Task<bool> CheckExistsAsync(TriggerKey key)
         {
             throw new NotImplementedException();
         }
 
-        public async Task ClearAllSchedulingDataAsync()
+        public Task ClearAllSchedulingDataAsync()
         {
             throw new NotImplementedException();
         }
@@ -116,26 +122,40 @@ namespace Quartz.RedisJobStore.Async
             {
                 if (!item.IsNullOrEmpty && matcher.CompareWithOperator.Evaluate(item, matcher.CompareToValue))
                 {
-                    var groupJobs = redis.SetMembersAsync(schema.RedisJobGroupKey(item));
-
-                    result.AddRange((await groupJobs).Select(s => schema.ToJobKey(s)));
+                    result.AddRange((await redis.SetMembersAsync(schema.RedisJobGroupKey(item))).Select(s => schema.ToJobKey(s)));
                 }
             }
 
             return result;
         }
 
-        public async Task<IReadOnlyCollection<string>> GetPausedTriggerGroupsAsync()
+        public Task<IReadOnlyCollection<string>> GetPausedTriggerGroupsAsync()
         {
             throw new NotImplementedException();
         }
 
-        public async Task<IReadOnlyCollection<IOperableTrigger>> GetTriggersForJobAsync(JobKey jobKey)
+        public async Task<IReadOnlyCollection<TriggerKey>> GetTriggerKeysAsync(GroupMatcher<TriggerKey> matcher)
+        {
+            var triggerGroups = redis.SetMembersAsync(schema.RedisTriggerGroupKey());
+            var result = new List<TriggerKey>();
+
+            foreach (var item in await triggerGroups)
+            {
+                if (!item.IsNullOrEmpty && matcher.CompareWithOperator.Evaluate(item, matcher.CompareToValue))
+                {
+                    result.AddRange((await redis.SetMembersAsync(schema.RedisTriggerGroupKey(item))).Select(s => schema.ToTriggerKey(s)));
+                }
+            }
+
+            return result;
+        }
+
+        public Task<IReadOnlyCollection<IOperableTrigger>> GetTriggersForJobAsync(JobKey key)
         {
             throw new NotImplementedException();
         }
 
-        public async Task<TriggerState> GetTriggerStateAsync(TriggerKey triggerKey)
+        public Task<TriggerState> GetTriggerStateAsync(TriggerKey key)
         {
             throw new NotImplementedException();
         }
@@ -150,117 +170,117 @@ namespace Quartz.RedisJobStore.Async
             throw new NotImplementedException();
         }
 
-        public async Task<IReadOnlyCollection<string>> JobGroupNamesAsync()
+        public Task<IReadOnlyCollection<string>> JobGroupNamesAsync()
         {
             throw new NotImplementedException();
         }
 
-        public async Task<int> NumberOfCalendarsAsync()
+        public Task<int> NumberOfCalendarsAsync()
         {
             throw new NotImplementedException();
         }
 
-        public async Task<int> NumberOfJobsAsync()
+        public Task<int> NumberOfJobsAsync()
         {
             throw new NotImplementedException();
         }
 
-        public async Task<int> NumberOfTriggersAsync()
+        public Task<int> NumberOfTriggersAsync()
         {
             throw new NotImplementedException();
         }
 
-        public async Task PauseAllTriggersAsync()
+        public Task PauseAllTriggersAsync()
         {
             throw new NotImplementedException();
         }
 
-        public async Task PauseJobAsync(JobKey jobKey)
+        public Task PauseJobAsync(JobKey jobKey)
         {
             throw new NotImplementedException();
         }
 
-        public async Task<IReadOnlyCollection<string>> PauseJobsAsync(GroupMatcher<JobKey> matcher)
+        public Task<IReadOnlyCollection<string>> PauseJobsAsync(GroupMatcher<JobKey> matcher)
         {
             throw new NotImplementedException();
         }
 
-        public async Task PauseTriggerAsync(TriggerKey triggerKey)
+        public Task PauseTriggerAsync(TriggerKey triggerKey)
         {
             throw new NotImplementedException();
         }
 
-        public async Task<IReadOnlyCollection<string>> PauseTriggersAsync(GroupMatcher<TriggerKey> matcher)
+        public Task<IReadOnlyCollection<string>> PauseTriggersAsync(GroupMatcher<TriggerKey> matcher)
         {
             throw new NotImplementedException();
         }
 
-        public async Task ReleaseAcquiredTriggerAsync(IOperableTrigger trigger)
+        public Task ReleaseAcquiredTriggerAsync(IOperableTrigger trigger)
         {
             throw new NotImplementedException();
         }
 
-        public async Task<bool> RemoveCalendarAsync(string name)
+        public Task<bool> RemoveCalendarAsync(string name)
         {
             throw new NotImplementedException();
         }
 
-        public async Task<bool> RemoveJobAsync(JobKey jobKey)
+        public Task<bool> RemoveJobAsync(JobKey jobKey)
         {
             throw new NotImplementedException();
         }
 
-        public async Task<bool> RemoveTriggerAsync(TriggerKey triggerKey, bool removeNonDurableJob = true)
+        public Task<bool> RemoveTriggerAsync(TriggerKey key, bool removeNonDurableJob = true)
         {
             throw new NotImplementedException();
         }
 
-        public async Task<bool> ReplaceTriggerAsync(TriggerKey triggerKey, IOperableTrigger newTrigger)
+        public Task<bool> ReplaceTriggerAsync(TriggerKey key, IOperableTrigger newTrigger)
         {
             throw new NotImplementedException();
         }
 
-        public async Task ResumeAllTriggersAsync()
+        public Task ResumeAllTriggersAsync()
         {
             throw new NotImplementedException();
         }
 
-        public async Task ResumeJobAsync(JobKey jobKey)
+        public Task ResumeJobAsync(JobKey jobKey)
         {
             throw new NotImplementedException();
         }
 
-        public async Task<IReadOnlyCollection<string>> ResumeJobsAsync(GroupMatcher<JobKey> matcher)
+        public Task<IReadOnlyCollection<string>> ResumeJobsAsync(GroupMatcher<JobKey> matcher)
         {
             throw new NotImplementedException();
         }
 
-        public async Task ResumeTriggerAsync(TriggerKey triggerKey)
+        public Task ResumeTriggerAsync(TriggerKey triggerKey)
         {
             throw new NotImplementedException();
         }
 
-        public async Task<IReadOnlyCollection<string>> ResumeTriggersAsync(GroupMatcher<TriggerKey> matcher)
+        public Task<IReadOnlyCollection<string>> ResumeTriggersAsync(GroupMatcher<TriggerKey> matcher)
         {
             throw new NotImplementedException();
         }
 
-        public async Task<ICalendar> RetrieveCalendarAsync(string name)
+        public Task<ICalendar> RetrieveCalendarAsync(string name)
         {
             throw new NotImplementedException();
         }
 
-        public async Task<IJobDetail> RetrieveJobAsync(JobKey jobKey)
+        public Task<IJobDetail> RetrieveJobAsync(JobKey key)
         {
             throw new NotImplementedException();
         }
 
-        public async Task<IOperableTrigger> RetrieveTriggerAsync(TriggerKey triggerKey)
+        public Task<IOperableTrigger> RetrieveTriggerAsync(TriggerKey key)
         {
             throw new NotImplementedException();
         }
 
-        public async Task StoreCalendarAsync(string name, ICalendar calendar, bool replaceExisting, bool updateTriggers)
+        public Task StoreCalendarAsync(string name, ICalendar calendar, bool replaceExisting, bool updateTriggers)
         {
             throw new NotImplementedException();
         }
@@ -318,45 +338,27 @@ namespace Quartz.RedisJobStore.Async
             }
         }
 
-        public async Task TriggeredJobCompleteAsync(IOperableTrigger trigger, IJobDetail jobDetail, SchedulerInstruction triggerInstCode)
+        public Task TriggeredJobCompleteAsync(IOperableTrigger trigger, IJobDetail jobDetail, SchedulerInstruction triggerInstCode)
         {
             throw new NotImplementedException();
         }
 
-        public async Task<IReadOnlyCollection<string>> TriggerGroupNamesAsync()
+        public Task<IReadOnlyCollection<string>> TriggerGroupNamesAsync()
         {
             throw new NotImplementedException();
         }
 
-        public async Task<IReadOnlyCollection<TriggerKey>> GetTriggerKeysAsync(GroupMatcher<TriggerKey> matcher)
-        {
-            var triggerGroups = redis.SetMembersAsync(schema.RedisTriggerGroupKey());
-            var result = new List<TriggerKey>();
-
-            foreach (var item in await triggerGroups)
-            {
-                if (!item.IsNullOrEmpty && matcher.CompareWithOperator.Evaluate(item, matcher.CompareToValue))
-                {
-                    var groupJobs = redis.SetMembersAsync(schema.RedisTriggerGroupKey(item));
-
-                    result.AddRange((await groupJobs).Select(s => schema.ToTriggerKey(s)));
-                }
-            }
-
-            return result;
-        }
-
-        public async Task<IReadOnlyCollection<TriggerFiredResult>> TriggersFiredAsync(IEnumerable<IOperableTrigger> triggers)
+        public Task<IReadOnlyCollection<TriggerFiredResult>> TriggersFiredAsync(IEnumerable<IOperableTrigger> triggers)
         {
             throw new NotImplementedException();
         }
 
-        public async Task<bool> UnsetTriggerStateAsync(string triggerHashKey)
+        public Task<bool> UnsetTriggerStateAsync(string triggerHashKey)
         {
             throw new NotImplementedException();
         }
 
-        protected async Task<bool> ApplyMisfireAsync(IOperableTrigger trigger)
+        protected Task<bool> ApplyMisfireAsync(IOperableTrigger trigger)
         {
             throw new NotImplementedException();
         }
@@ -365,240 +367,5 @@ namespace Quartz.RedisJobStore.Async
         {
             throw new NotImplementedException();
         }
-
-        //protected HashEntry[] ConvertToHashEntries(ITrigger trigger)
-        //{
-        //    var operable = (IOperableTrigger)trigger;
-        //    if (operable == null)
-        //    {
-        //        throw new InvalidCastException("trigger needs to be IOperable");
-        //    }
-
-        //    var entries = new List<HashEntry>
-        //                      {
-        //                          new HashEntry(
-        //                              TriggerStoreKey.JobHash,
-        //                              operable.JobKey == null ? string.Empty : schema.JobHashKey(operable.JobKey)),
-        //                          new HashEntry(TriggerStoreKey.Description, operable.Description ?? string.Empty),
-        //                          new HashEntry(
-        //                              TriggerStoreKey.NextFireTime,
-        //                              operable.GetNextFireTimeUtc().HasValue
-        //                                  ? operable.GetNextFireTimeUtc().GetValueOrDefault().DateTime.ToUnixTimeMillieSeconds().ToString(CultureInfo.InvariantCulture)
-        //                                  : string.Empty),
-        //                          new HashEntry(
-        //                              TriggerStoreKey.PrevFireTime,
-        //                              operable.GetPreviousFireTimeUtc().HasValue
-        //                                  ? operable.GetPreviousFireTimeUtc().GetValueOrDefault().DateTime.ToUnixTimeMillieSeconds().ToString(CultureInfo.InvariantCulture)
-        //                                  : string.Empty),
-        //                          new HashEntry(TriggerStoreKey.Priority, operable.Priority),
-        //                          new HashEntry(
-        //                              TriggerStoreKey.StartTime,
-        //                              operable.StartTimeUtc.DateTime.ToUnixTimeMillieSeconds()),
-        //                          new HashEntry(
-        //                              TriggerStoreKey.EndTime,
-        //                              operable.EndTimeUtc.HasValue
-        //                                  ? operable.EndTimeUtc.Value.DateTime.ToUnixTimeMillieSeconds().ToString(CultureInfo.InvariantCulture)
-        //                                  : string.Empty),
-        //                          new HashEntry(
-        //                              TriggerStoreKey.FinalFireTime,
-        //                              operable.FinalFireTimeUtc.HasValue
-        //                                  ? operable.FinalFireTimeUtc.Value.DateTime.ToUnixTimeMillieSeconds().ToString(CultureInfo.InvariantCulture)
-        //                                  : string.Empty),
-        //                          new HashEntry(TriggerStoreKey.FireInstanceId, operable.FireInstanceId ?? string.Empty),
-        //                          new HashEntry(TriggerStoreKey.MisfireInstruction, operable.MisfireInstruction),
-        //                          new HashEntry(TriggerStoreKey.CalendarName, operable.CalendarName ?? string.Empty)
-        //                      };
-
-        //    switch (operable)
-        //    {
-        //        case ISimpleTrigger _:
-        //            entries.Add(new HashEntry(TriggerStoreKey.TriggerType, TriggerStoreKey.TriggerTypeSimple));
-        //            entries.Add(new HashEntry(TriggerStoreKey.RepeatCount, ((ISimpleTrigger)operable).RepeatCount));
-        //            entries.Add(new HashEntry(TriggerStoreKey.RepeatInterval, ((ISimpleTrigger)operable).RepeatInterval.ToString()));
-        //            entries.Add(new HashEntry(TriggerStoreKey.TimesTriggered, ((ISimpleTrigger)operable).TimesTriggered));
-        //            break;
-        //        case ICronTrigger _:
-        //            entries.Add(new HashEntry(TriggerStoreKey.TriggerType, TriggerStoreKey.TriggerTypeCron));
-        //            entries.Add(new HashEntry(TriggerStoreKey.CronExpression, ((ICronTrigger)operable).CronExpressionString));
-        //            entries.Add(new HashEntry(TriggerStoreKey.TimeZoneId, ((ICronTrigger)operable).TimeZone.Id));
-        //            break;
-        //    }
-
-        //    return entries.ToArray();
-        //}
-
-        //protected async Task<double> GetLastTriggersReleaseTimeAsync()
-        //{
-        //    var lastReleaseTime = redis.StringGetAsync(schema.LastTriggerReleaseTime());
-
-        //    return string.IsNullOrEmpty(await lastReleaseTime) ? 0 : double.Parse(await lastReleaseTime);
-        //}
-
-        //protected async Task ReleaseOrphanedTriggersAsync(TriggerState currentState, TriggerState newState)
-        //{
-        //    var triggers = redis.SortedSetRangeByScoreWithScoresAsync(schema.TriggerStateKey(currentState), 0, -1);
-
-        //    foreach (var sortedSetEntry in await triggers)
-        //    {
-        //        var lockedId = redis.StringGetAsync(schema.TriggerLockKey(schema.TriggerKey(sortedSetEntry.Element.ToString())));
-        //        if (string.IsNullOrEmpty(await lockedId))
-        //        {
-        //            await SetTriggerStateAsync(newState, sortedSetEntry.Score, sortedSetEntry.Element);
-        //        }
-        //    }
-        //}
-
-        //protected Task SetLastTriggerReleaseTimeAsync(double time)
-        //{
-        //    return redis.StringSetAsync(schema.LastTriggerReleaseTime(), time);
-        //}
-
-        //protected async Task<bool> SetTriggerStateAsync(TriggerState state, double score, string triggerHashKey)
-        //{
-        //    await UnsetTriggerStateAsync(triggerHashKey);
-        //    return await redis.SortedSetAddAsync(schema.TriggerStateKey(state), triggerHashKey, score);
-        //}
-
-        //private DateTime DateTimeFromUnixTimestampMillis(double millis)
-        //{
-        //    return unixEpoch.AddMilliseconds(millis);
-        //}
-
-        //private object JsonDeSerialize(string jsonString)
-        //{
-        //    object result;
-
-        //    using (var ms = new MemoryStream(Encoding.UTF8.GetBytes(jsonString)))
-        //    using (var sr = new StreamReader(ms))
-        //    using (var reader = new JsonTextReader(sr))
-        //    {
-        //        result = serializer.Deserialize(reader);
-        //    }
-
-        //    return result;
-        //}
-
-        //private string JsonSerialize<T>(T obj)
-        //{
-        //    string result;
-
-        //    using (var ms = new MemoryStream())
-        //    using (var sw = new StreamWriter(ms))
-        //    using (var jsonTextWriter = new JsonTextWriter(sw))
-        //    using (var reader = new StreamReader(ms, Encoding.UTF8))
-        //    {
-        //        serializer.Serialize(jsonTextWriter, obj);
-        //        jsonTextWriter.Flush();
-        //        ms.Seek(0, SeekOrigin.Begin);
-        //        result = reader.ReadToEnd();
-        //    }
-
-        //    return result;
-        //}
-
-        //private void PopulateTrigger(TriggerKey triggerKey, IDictionary<string, string> properties, IOperableTrigger trigger)
-        //{
-        //    trigger.Key = triggerKey;
-        //    trigger.JobKey = schema.JobKey(properties[TriggerStoreKey.JobHash]);
-        //    trigger.Description = properties[TriggerStoreKey.Description];
-        //    trigger.FireInstanceId = properties[TriggerStoreKey.FireInstanceId];
-        //    trigger.CalendarName = properties[TriggerStoreKey.CalendarName];
-        //    trigger.Priority = int.Parse(properties[TriggerStoreKey.Priority]);
-        //    trigger.MisfireInstruction = int.Parse(properties[TriggerStoreKey.MisfireInstruction]);
-        //    trigger.StartTimeUtc = DateTimeFromUnixTimestampMillis(double.Parse(properties[TriggerStoreKey.StartTime]));
-
-        //    trigger.EndTimeUtc = string.IsNullOrEmpty(properties[TriggerStoreKey.EndTime])
-        //                             ? default(DateTimeOffset?)
-        //                             : DateTimeFromUnixTimestampMillis(double.Parse(properties[TriggerStoreKey.EndTime]));
-
-        //    if (trigger is AbstractTrigger)
-        //    {
-        //        trigger.SetNextFireTimeUtc(
-        //            string.IsNullOrEmpty(properties[TriggerStoreKey.NextFireTime])
-        //                ? default(DateTimeOffset?)
-        //                : DateTimeFromUnixTimestampMillis(double.Parse(properties[TriggerStoreKey.NextFireTime])));
-
-        //        trigger.SetPreviousFireTimeUtc(
-        //            string.IsNullOrEmpty(properties[TriggerStoreKey.PrevFireTime])
-        //                ? default(DateTimeOffset?)
-        //                : DateTimeFromUnixTimestampMillis(double.Parse(properties[TriggerStoreKey.PrevFireTime])));
-        //    }
-        //}
-
-        //private IOperableTrigger RetrieveTrigger(TriggerKey triggerKey, IDictionary<string, string> properties)
-        //{
-        //    var type = properties[TriggerStoreKey.TriggerType];
-
-        //    if (string.IsNullOrEmpty(type))
-        //    {
-        //        return null;
-        //    }
-
-        //    if (type.Equals(TriggerStoreKey.TriggerTypeSimple, StringComparison.OrdinalIgnoreCase))
-        //    {
-        //        var simpleTrigger = new SimpleTriggerImpl();
-
-        //        if (!string.IsNullOrEmpty(properties[TriggerStoreKey.RepeatCount]))
-        //        {
-        //            simpleTrigger.RepeatCount = Convert.ToInt32(properties[TriggerStoreKey.RepeatCount]);
-        //        }
-
-        //        if (!string.IsNullOrEmpty(properties[TriggerStoreKey.RepeatInterval]))
-        //        {
-        //            simpleTrigger.RepeatInterval = TimeSpan.Parse(properties[TriggerStoreKey.RepeatInterval]);
-        //        }
-
-        //        if (!string.IsNullOrEmpty(properties[TriggerStoreKey.TimesTriggered]))
-        //        {
-        //            simpleTrigger.TimesTriggered = Convert.ToInt32(properties[TriggerStoreKey.TimesTriggered]);
-        //        }
-
-        //        PopulateTrigger(triggerKey, properties, simpleTrigger);
-
-        //        return simpleTrigger;
-        //    }
-
-        //    var cronTrigger = new CronTriggerImpl();
-
-        //    if (!string.IsNullOrEmpty(properties[TriggerStoreKey.TimeZoneId]))
-        //    {
-        //        cronTrigger.TimeZone = TimeZoneInfo.FindSystemTimeZoneById(properties[TriggerStoreKey.TimeZoneId]);
-        //    }
-
-        //    if (!string.IsNullOrEmpty(properties[TriggerStoreKey.CronExpression]))
-        //    {
-        //        cronTrigger.CronExpressionString = properties[TriggerStoreKey.CronExpression];
-        //    }
-
-        //    PopulateTrigger(triggerKey, properties, cronTrigger);
-
-        //    return cronTrigger;
-        //}
-
-        //private async Task UpdateTriggerStateAsync(ITrigger trigger)
-        //{
-        //    var triggerPausedResult = redis.SetContainsAsync(schema.PausedTriggerGroupsKey(), schema.TriggerGroupSetKey(trigger.Key.Group));
-        //    var jobPausedResult = redis.SetContainsAsync(schema.PausedJobGroupsKey(), schema.JobGroupKey(trigger.JobKey.Group));
-        //    var nextFireTime = trigger.GetNextFireTimeUtc().HasValue
-        //                           ? trigger.GetNextFireTimeUtc().GetValueOrDefault().DateTime.ToUnixTimeMillieSeconds()
-        //                           : -1;
-        //    if (await triggerPausedResult || await jobPausedResult)
-        //    {
-        //        var jobHashKey = schema.JobHashKey(trigger.JobKey);
-
-        //        if (await redis.SetContainsAsync(schema.BlockedJobsSet(), jobHashKey))
-        //        {
-        //            await SetTriggerStateAsync(TriggerState.PausedBlocked, nextFireTime, schema.TriggerHashKey(trigger.Key));
-        //        }
-        //        else
-        //        {
-        //            await SetTriggerStateAsync(TriggerState.Paused, nextFireTime, schema.TriggerHashKey(trigger.Key));
-        //        }
-        //    }
-        //    else if (trigger.GetNextFireTimeUtc().HasValue)
-        //    {
-        //        await SetTriggerStateAsync(TriggerState.Waiting, nextFireTime, schema.TriggerHashKey(trigger.Key));
-        //    }
-        //}
     }
 }
