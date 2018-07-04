@@ -128,9 +128,16 @@
             return result;
         }
 
-        public Task<IReadOnlyCollection<string>> GetPausedTriggerGroupsAsync()
+        public async Task<IReadOnlyCollection<string>> GetPausedTriggerGroupsAsync()
         {
-            throw new NotImplementedException();
+            var paused = redis.SetMembersAsync(schema.RedisTriggerGroupStateKey(TriggerRedisState.Paused));
+
+            if ((await paused).Length == 0)
+            {
+                return new List<string>();
+            }
+
+            return (await paused).ToStringArray();
         }
 
         public async Task<IReadOnlyCollection<TriggerKey>> GetTriggerKeysAsync(GroupMatcher<TriggerKey> matcher)

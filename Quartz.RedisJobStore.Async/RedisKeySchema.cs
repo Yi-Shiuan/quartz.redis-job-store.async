@@ -6,6 +6,8 @@
 
     using Quartz.RedisJobStore.Async.Enums;
 
+    using StackExchange.Redis;
+
     #endregion
 
     public class RedisKeySchema
@@ -127,6 +129,11 @@
         public string TriggerStoreKey(TriggerKey key)
         {
             return $"{key.Group}{delimiter}{key.Name}";
+        }
+
+        public string RedisTriggerGroupStateKey(TriggerRedisState state)
+        {
+            return $"Trigger_Group_State{delimiter}{state}";
         }
     }
 }
