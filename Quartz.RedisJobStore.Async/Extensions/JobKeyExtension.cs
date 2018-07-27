@@ -33,8 +33,8 @@
                        {
                            new HashEntry(JobStoreKey.JobClass, detail.JobType.AssemblyQualifiedName),
                            new HashEntry(JobStoreKey.Description, detail.Description ?? string.Empty),
-                           new HashEntry(JobStoreKey.IsDurable, detail.Durable),
-                           new HashEntry(JobStoreKey.RequestRecovery, detail.RequestsRecovery),
+                           new HashEntry(JobStoreKey.IsDurable, detail.Durable ? bool.TrueString : bool.FalseString),
+                           new HashEntry(JobStoreKey.RequestRecovery, detail.RequestsRecovery ? bool.TrueString : bool.FalseString),
                            new HashEntry(JobStoreKey.BlockedBy, string.Empty),
                            new HashEntry(JobStoreKey.BlockTime, string.Empty)
                        };

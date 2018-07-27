@@ -12,6 +12,7 @@
     using Common.Logging;
 
     using Quartz.Impl.Matchers;
+    using Quartz.RedisJobStore.Async.Enums;
     using Quartz.Spi;
 
     using StackExchange.Redis;
@@ -131,7 +132,7 @@
             JobKey jobKey,
             CancellationToken cancellationToken = new CancellationToken())
         {
-            return DoWithLock(storage.GetTriggersForJobAsync(jobKey), $"Error on getting triggers for job - {jobKey}");
+            return DoWithLock(storage.GetTriggersByJobAsync(jobKey), $"Error on getting triggers for job - {jobKey}");
         }
 
         public Task<TriggerState> GetTriggerState(TriggerKey triggerKey, CancellationToken cancellationToken = new CancellationToken())
