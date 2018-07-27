@@ -150,9 +150,10 @@
             return result;
         }
 
-        public Task<IReadOnlyCollection<IOperableTrigger>> GetTriggersForJobAsync(JobKey key)
+        public async Task<IReadOnlyCollection<IOperableTrigger>> GetTriggersForJobAsync(JobKey key)
         {
-            throw new NotImplementedException();
+            
+            return new List<IOperableTrigger>();
         }
 
         public Task<TriggerState> GetTriggerStateAsync(TriggerKey key)
