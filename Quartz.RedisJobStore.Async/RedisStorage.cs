@@ -405,12 +405,14 @@
                 redis.SetAdd(schema.RedisCalendarKey(trigger.CalendarName), triggerStoreKey, CommandFlags.FireAndForget);
             }
 
-            if (await isTriggerExisted)
+            if (!await isTriggerExisted)
             {
-                foreach (TriggerRedisState item in Enum.GetValues(typeof(TriggerRedisState)))
-                {
-                    await redis.SortedSetRemoveAsync(schema.RedisTriggerStateKey(item), triggerStoreKey);
-                }
+                return;
+            }
+            
+            foreach (TriggerRedisState item in Enum.GetValues(typeof(TriggerRedisState)))
+            {
+                await redis.SortedSetRemoveAsync(schema.RedisTriggerStateKey(item), triggerStoreKey);
             }
         }
 
