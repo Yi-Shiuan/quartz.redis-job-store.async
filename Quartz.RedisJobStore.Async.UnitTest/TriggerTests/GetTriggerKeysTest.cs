@@ -1,24 +1,29 @@
-﻿namespace Quartz.RedisJobStore.Async.UnitTest.TriggerTests
+﻿using System.Threading.Tasks;
+using FluentAssertions;
+using NSubstitute;
+using NUnit.Framework;
+using Quartz.Impl.Matchers;
+using StackExchange.Redis;
+
+namespace Quartz.RedisJobStore.Async.UnitTest.TriggerTests
 {
     #region
-
-    using System.Threading.Tasks;
-
-    using FluentAssertions;
-
-    using NSubstitute;
-
-    using NUnit.Framework;
-
-    using Quartz.Impl.Matchers;
-
-    using StackExchange.Redis;
 
     #endregion
 
     [TestFixture]
     public class GetTriggerKeysTest : FixtureTestBase
     {
+        private void ReturnTriggerGroup(params RedisValue[] values)
+        {
+            redis.SetMembersAsync(schema.RedisTriggerGroupKey()).Returns(values);
+        }
+
+        private void ReturnTriggerGroupTriggers(string key, params RedisValue[] values)
+        {
+            redis.SetMembersAsync(schema.RedisTriggerGroupKey(key)).Returns(values);
+        }
+
         [Test]
         public async Task GetTriggerContainsWithTestShouldHaveOneResult()
         {
@@ -100,16 +105,6 @@
 
             (await result).Should().HaveCount(1);
             (await result).Should().Contain(new TriggerKey("trigger1", "TestTrigger"));
-        }
-
-        private void ReturnTriggerGroup(params RedisValue[] values)
-        {
-            redis.SetMembersAsync(schema.RedisTriggerGroupKey()).Returns(values);
-        }
-
-        private void ReturnTriggerGroupTriggers(string key, params RedisValue[] values)
-        {
-            redis.SetMembersAsync(schema.RedisTriggerGroupKey(key)).Returns(values);
         }
     }
 }

@@ -1,21 +1,17 @@
-﻿namespace Quartz.RedisJobStore.Async
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Common.Logging;
+using Quartz.Impl.Matchers;
+using Quartz.Spi;
+using StackExchange.Redis;
+
+namespace Quartz.RedisJobStore.Async
 {
     #region
-
-    using System;
-    using System.Collections.Generic;
-    using System.Diagnostics;
-    using System.Linq;
-    using System.Threading;
-    using System.Threading.Tasks;
-
-    using Common.Logging;
-
-    using Quartz.Impl.Matchers;
-    using Quartz.RedisJobStore.Async.Enums;
-    using Quartz.Spi;
-
-    using StackExchange.Redis;
 
     #endregion
 
@@ -30,6 +26,14 @@
             logger = logger = LogManager.GetLogger<RedisJobStore>();
         }
 
+        public string KeyDelimiter { get; set; }
+
+        public int? MisfireThreshold { get; set; }
+
+        public Task<ConnectionMultiplexer> Multiplexer { get; set; }
+
+        public string RedisConfiguration { get; set; }
+
         public bool Clustered => true;
 
         public long EstimatedTimeToReleaseAndAcquireTrigger => 200;
@@ -38,18 +42,10 @@
 
         public string InstanceName { get; set; }
 
-        public string KeyDelimiter { get; set; }
-
-        public int? MisfireThreshold { get; set; }
-
-        public Task<ConnectionMultiplexer> Multiplexer { get; set; }
-
-        public string RedisConfiguration { get; set; }
-        
         public bool SupportsPersistence => true;
 
         public int ThreadPoolSize { get; set; }
-        
+
         public Task<IReadOnlyCollection<IOperableTrigger>> AcquireNextTriggers(
             DateTimeOffset noLaterThan,
             int maxCount,
@@ -338,10 +334,10 @@
         {
             await DoWithLock(
                 new[]
-                    {
-                        storage.StoreJobAsync(newJob, false),
-                        storage.StoreTriggerAsync(newTrigger, false)
-                    },
+                {
+                    storage.StoreJobAsync(newJob, false),
+                    storage.StoreTriggerAsync(newTrigger, false)
+                },
                 "Could not store job/trigger");
         }
 

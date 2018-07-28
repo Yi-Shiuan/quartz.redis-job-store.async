@@ -3,10 +3,7 @@
     #region
 
     using System;
-
     using Quartz.RedisJobStore.Async.Enums;
-
-    using StackExchange.Redis;
 
     #endregion
 
@@ -32,6 +29,11 @@
         public string RedisCalendarKey(string calendarName)
         {
             return $"Calendar{delimiter}{calendarName}";
+        }
+        
+        public string RedisCalendarKey()
+        {
+            return $"Calendars";
         }
 
         public string RedisJobDataMap(JobKey jobKey)
@@ -99,16 +101,6 @@
             return $"Trigger_State{delimiter}{state}";
         }
 
-        public string[] Split(string input)
-        {
-            return input.Split(
-                new[]
-                    {
-                        delimiter
-                    },
-                StringSplitOptions.None);
-        }
-
         public JobKey ToJobKey(string key)
         {
             var t = Split(key);
@@ -134,6 +126,16 @@
         public string RedisTriggerGroupStateKey(TriggerRedisState state)
         {
             return $"Trigger_Group_State{delimiter}{state}";
+        }
+
+        private string[] Split(string input)
+        {
+            return input.Split(
+                new[]
+                {
+                    delimiter
+                },
+                StringSplitOptions.None);
         }
     }
 }

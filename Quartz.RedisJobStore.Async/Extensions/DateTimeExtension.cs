@@ -1,7 +1,7 @@
-﻿namespace Quartz.RedisJobStore.Async.Extensions
-{
-    using System;
+﻿using System;
 
+namespace Quartz.RedisJobStore.Async.Extensions
+{
     public static class DateTimeExtension
     {
         public static double ToUnixTimeMillieSeconds(this DateTime date)

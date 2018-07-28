@@ -1,21 +1,18 @@
-﻿namespace Quartz.RedisJobStore.Async.UnitTest
+﻿using NSubstitute;
+using NUnit.Framework;
+using Quartz.Spi;
+using StackExchange.Redis;
+
+namespace Quartz.RedisJobStore.Async.UnitTest
 {
     #region
-
-    using NSubstitute;
-
-    using NUnit.Framework;
-
-    using Quartz.Spi;
-
-    using StackExchange.Redis;
 
     #endregion
 
     public class FixtureTestBase
     {
         protected readonly string Delimiter = ":";
-        
+
         protected IDatabase redis;
 
         protected RedisKeySchema schema;

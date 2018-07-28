@@ -1,18 +1,13 @@
-﻿namespace Quartz.RedisJobStore.Async.UnitTest.TriggerTests
+﻿using System.Threading.Tasks;
+using FluentAssertions;
+using NSubstitute;
+using NUnit.Framework;
+using Quartz.RedisJobStore.Async.Enums;
+using StackExchange.Redis;
+
+namespace Quartz.RedisJobStore.Async.UnitTest.TriggerTests
 {
     #region
-
-    using System.Threading.Tasks;
-
-    using FluentAssertions;
-
-    using NSubstitute;
-
-    using NUnit.Framework;
-
-    using Quartz.RedisJobStore.Async.Enums;
-
-    using StackExchange.Redis;
 
     #endregion
 
@@ -28,31 +23,31 @@
 
             (await result).Should().BeEmpty();
         }
-        
-        [Test]
-        public async Task RedisOneAnyPausedTriggersShouldBeReturnOneRecord()
-        {
-            redis.SetMembersAsync(schema.RedisTriggerGroupStateKey(TriggerRedisState.Paused)).Returns(new RedisValue[]
-                                                                                                          {
-                                                                                                              "Unit"
-                                                                                                          });
 
-            var result = storage.GetPausedTriggerGroupsAsync();
-
-            (await result).Should().HaveCount(1);
-        }
-        
         [Test]
         public async Task RedisOneAnyPausedTriggersShouldBeEqualRedisStoreData()
         {
             redis.SetMembersAsync(schema.RedisTriggerGroupStateKey(TriggerRedisState.Paused)).Returns(new RedisValue[]
-                                                                                                          {
-                                                                                                              "Unit"
-                                                                                                          });
+            {
+                "Unit"
+            });
 
             var result = storage.GetPausedTriggerGroupsAsync();
 
             (await result).Should().Contain("Unit");
+        }
+
+        [Test]
+        public async Task RedisOneAnyPausedTriggersShouldBeReturnOneRecord()
+        {
+            redis.SetMembersAsync(schema.RedisTriggerGroupStateKey(TriggerRedisState.Paused)).Returns(new RedisValue[]
+            {
+                "Unit"
+            });
+
+            var result = storage.GetPausedTriggerGroupsAsync();
+
+            (await result).Should().HaveCount(1);
         }
     }
 }

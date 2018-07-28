@@ -6,19 +6,14 @@
     using System.Collections.Generic;
     using System.Linq;
     using System.Threading.Tasks;
-
     using Common.Logging;
-
     using Newtonsoft.Json;
     using Newtonsoft.Json.Serialization;
-
-    using Quartz.Impl;
     using Quartz.Impl.Matchers;
     using Quartz.Impl.Triggers;
     using Quartz.RedisJobStore.Async.Enums;
     using Quartz.RedisJobStore.Async.Extensions;
     using Quartz.Spi;
-
     using StackExchange.Redis;
 
     #endregion
@@ -35,7 +30,7 @@
 
         private readonly RedisKeySchema schema;
 
-        private readonly JsonSerializer serializer;
+        private readonly JsonSerializerSettings serializer;
 
         private readonly ISchedulerSignaler signaler;
 
@@ -47,13 +42,13 @@
             this.instanceId = instanceId;
             this.misfireThreshold = misfireThreshold;
             logger = LogManager.GetLogger<RedisStorage>();
-            serializer = new JsonSerializer
-                             {
-                                 TypeNameHandling = TypeNameHandling.All,
-                                 DateTimeZoneHandling = DateTimeZoneHandling.Utc,
-                                 NullValueHandling = NullValueHandling.Ignore,
-                                 ContractResolver = new CamelCasePropertyNamesContractResolver()
-                             };
+            serializer = new JsonSerializerSettings
+            {
+                TypeNameHandling = TypeNameHandling.All,
+                DateTimeZoneHandling = DateTimeZoneHandling.Utc,
+                NullValueHandling = NullValueHandling.Ignore,
+                ContractResolver = new CamelCasePropertyNamesContractResolver()
+            };
         }
 
         public Task<IReadOnlyCollection<IOperableTrigger>> AcquireNextTriggersAsync(DateTimeOffset noLaterThan, int maxCount, TimeSpan timeWindow)
@@ -302,10 +297,11 @@
             var dataMaps = redis.HashGetAllAsync(schema.RedisJobDataMap(key));
 
             var builder = JobBuilder.Create(Type.GetType(properties[JobStoreKey.JobClass]))
-                                            .WithIdentity(key)
-                                            .StoreDurably(bool.Parse(properties[JobStoreKey.IsDurable]))
-                                            .RequestRecovery(bool.Parse(properties[JobStoreKey.RequestRecovery]))
-                                            .WithDescription(properties[JobStoreKey.Description]);
+                .WithIdentity(key)
+                .StoreDurably(bool.Parse(properties[JobStoreKey.IsDurable]))
+                .RequestRecovery(bool.Parse(properties[JobStoreKey.RequestRecovery]))
+                .WithDescription(properties[JobStoreKey.Description]);
+            
             builder.UsingJobData(new JobDataMap((await dataMaps).ToStringDictionary()));
             return builder.Build();
         }
@@ -323,19 +319,19 @@
             if (properties[TriggerStoreKey.TriggerType] == TriggerStoreKey.TriggerTypeSimple)
             {
                 trigger = new SimpleTriggerImpl
-                              {
-                                  RepeatCount = int.Parse(properties[TriggerStoreKey.RepeatCount]),
-                                  RepeatInterval = TimeSpan.Parse(properties[TriggerStoreKey.RepeatInterval]),
-                                  TimesTriggered = int.Parse(properties[TriggerStoreKey.TimesTriggered])
-                              };
+                {
+                    RepeatCount = int.Parse(properties[TriggerStoreKey.RepeatCount]),
+                    RepeatInterval = TimeSpan.Parse(properties[TriggerStoreKey.RepeatInterval]),
+                    TimesTriggered = int.Parse(properties[TriggerStoreKey.TimesTriggered])
+                };
             }
             else
             {
                 trigger = new CronTriggerImpl
-                              {
-                                  TimeZone = TimeZoneInfo.FindSystemTimeZoneById(properties[TriggerStoreKey.TimeZoneId]),
-                                  CronExpressionString = properties[TriggerStoreKey.CronExpression]
-                              };
+                {
+                    TimeZone = TimeZoneInfo.FindSystemTimeZoneById(properties[TriggerStoreKey.TimeZoneId]),
+                    CronExpressionString = properties[TriggerStoreKey.CronExpression]
+                };
             }
 
             trigger.Key = key;
@@ -346,26 +342,36 @@
             trigger.Priority = int.Parse(properties[TriggerStoreKey.Priority]);
             trigger.MisfireInstruction = int.Parse(properties[TriggerStoreKey.MisfireInstruction]);
             trigger.StartTimeUtc = ToUnixTimestamp(double.Parse(properties[TriggerStoreKey.StartTime]));
-            trigger.EndTimeUtc = string.IsNullOrEmpty(properties[TriggerStoreKey.EndTime]) ? default(DateTimeOffset?) : ToUnixTimestamp(double.Parse(properties[TriggerStoreKey.EndTime]));
-            
-            ((AbstractTrigger)trigger).SetNextFireTimeUtc(
-                string.IsNullOrEmpty(properties[TriggerStoreKey.NextFireTime]) ? default(DateTimeOffset?) : ToUnixTimestamp(double.Parse(properties[TriggerStoreKey.NextFireTime])));
-            ((AbstractTrigger)trigger).SetPreviousFireTimeUtc(
-                string.IsNullOrEmpty(properties[TriggerStoreKey.PrevFireTime]) ? default(DateTimeOffset?) : ToUnixTimestamp(double.Parse(properties[TriggerStoreKey.PrevFireTime])));
+            trigger.EndTimeUtc = string.IsNullOrEmpty(properties[TriggerStoreKey.EndTime])
+                ? default(DateTimeOffset?)
+                : ToUnixTimestamp(double.Parse(properties[TriggerStoreKey.EndTime]));
+
+            ((AbstractTrigger) trigger).SetNextFireTimeUtc(
+                string.IsNullOrEmpty(properties[TriggerStoreKey.NextFireTime])
+                    ? default(DateTimeOffset?)
+                    : ToUnixTimestamp(double.Parse(properties[TriggerStoreKey.NextFireTime])));
+            ((AbstractTrigger) trigger).SetPreviousFireTimeUtc(
+                string.IsNullOrEmpty(properties[TriggerStoreKey.PrevFireTime])
+                    ? default(DateTimeOffset?)
+                    : ToUnixTimestamp(double.Parse(properties[TriggerStoreKey.PrevFireTime])));
 
             return trigger;
         }
 
-        public Task StoreCalendarAsync(string name, ICalendar calendar, bool replaceExisting, bool updateTriggers)
+        public async Task StoreCalendarAsync(string name, ICalendar calendar, bool replaceExisting, bool updateTriggers)
         {
-            throw new NotImplementedException();
+            if (await redis.KeyExistsAsync(schema.RedisCalendarKey(name)) && !replaceExisting)
+            {
+                throw new ObjectAlreadyExistsException("Cannot store thsi calander");
+            }
+
+            redis.StringSet(schema.RedisCalendarKey(name), JsonConvert.SerializeObject(calendar, serializer), flags: CommandFlags.FireAndForget);
+            redis.SetAdd(schema.RedisCalendarKey(), name, CommandFlags.FireAndForget);
         }
 
         public async Task StoreJobAsync(IJobDetail job, bool replaceExisting)
         {
-            var redisJobKey = schema.RedisJobKey(job.Key);
-
-            if (await redis.KeyExistsAsync(redisJobKey) && !replaceExisting)
+            if (await redis.KeyExistsAsync(schema.RedisJobKey(job.Key)) && !replaceExisting)
             {
                 throw new ObjectAlreadyExistsException(job);
             }
@@ -376,7 +382,7 @@
             redis.SetAdd(schema.RedisJobKey(), jobStoreKey, CommandFlags.FireAndForget);
             redis.SetAdd(schema.RedisJobGroupKey(), schema.JobGroupStoreKey(job.Key), CommandFlags.FireAndForget);
             redis.HashSet(schema.RedisJobDataMap(job.Key), job.JobDataMap.ToStoreEntity(), CommandFlags.FireAndForget);
-            redis.HashSet(redisJobKey, job.ToStoreEntries(), CommandFlags.FireAndForget);
+            redis.HashSet(schema.RedisJobKey(job.Key), job.ToStoreEntries(), CommandFlags.FireAndForget);
         }
 
         public async Task StoreTriggerAsync(ITrigger trigger, bool replaceExisting)
@@ -409,7 +415,7 @@
             {
                 return;
             }
-            
+
             foreach (TriggerRedisState item in Enum.GetValues(typeof(TriggerRedisState)))
             {
                 await redis.SortedSetRemoveAsync(schema.RedisTriggerStateKey(item), triggerStoreKey);
@@ -431,17 +437,12 @@
             throw new NotImplementedException();
         }
 
-        public Task<bool> UnsetTriggerStateAsync(string triggerHashKey)
+        public Task<bool> ResetTriggerStateAsync(string triggerHashKey)
         {
             throw new NotImplementedException();
         }
 
         protected Task<bool> ApplyMisfireAsync(IOperableTrigger trigger)
-        {
-            throw new NotImplementedException();
-        }
-
-        protected IDictionary<string, string> ConvertToDictionaryString(HashEntry[] entries)
         {
             throw new NotImplementedException();
         }

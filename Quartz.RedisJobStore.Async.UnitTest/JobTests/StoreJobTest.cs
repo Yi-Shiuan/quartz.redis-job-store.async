@@ -3,11 +3,8 @@
     #region
 
     using System.Threading.Tasks;
-
     using NSubstitute;
-
     using NUnit.Framework;
-
     using StackExchange.Redis;
 
     #endregion
