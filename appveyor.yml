@@ -8,5 +8,5 @@ build_script:
   - dotnet restore
   - cd Quartz.RedisJobStore.Async.UnitTest
   - dotnet test
-  - cd cd ..\Quartz.RedisJobStore.Async
+  - cd ..\Quartz.RedisJobStore.Async
   - dotnet build -c Release
